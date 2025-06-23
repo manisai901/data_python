@@ -1,0 +1,61 @@
+from google.cloud import storage, bigquery
+from io import TextIOWrapper
+import csv
+from schemas import SCHEMA_TO_DICT
+from generators import TYPES_TO_GENERATORS
+
+def generate_file(schema: str, name: str, count: int, bucket_name: str, bq_dataset: str, bq_table: str):
+    schema_dict = SCHEMA_TO_DICT[schema]
+    data_generators = [TYPES_TO_GENERATORS[elem['type']] for elem in schema_dict]
+
+    # GCS path
+    blob_path = f"{schema}/{name}.csv"
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+
+    # Write to GCS
+    print(f"📤 Writing CSV directly to GCS: gs://{bucket_name}/{blob_path}")
+    with blob.open("w", newline="", encoding="utf-8") as gcs_file:
+        writer = csv.writer(TextIOWrapper(gcs_file, encoding="utf-8"))
+
+        # Header
+        headers = [elem['name'] for elem in schema_dict]
+        headers.insert(0, "index")
+        writer.writerow(headers)
+
+        # Content
+        rows = []
+        for index in range(1, count + 1):
+            row = [gen() for gen in data_generators]
+            row.insert(0, index)
+            rows.append(row)
+
+            if index % 1000 == 0:
+                writer.writerows(rows)
+                rows = []
+
+            if index % 100000 == 0:
+                print(f"✅ Written {index}/{count}")
+
+        if rows:
+            writer.writerows(rows)
+
+    print(f"✅ Upload complete: gs://{bucket_name}/{blob_path}")
+
+    # Load to BigQuery
+    bq_uri = f"gs://{bucket_name}/{blob_path}"
+    bq_client = bigquery.Client()
+    table_ref = bq_client.dataset(bq_dataset).table(bq_table)
+
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.CSV,
+        skip_leading_rows=1,
+        autodetect=True,
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+    )
+
+    print(f"📥 Loading to BigQuery: {bq_dataset}.{bq_table}")
+    load_job = bq_client.load_table_from_uri(bq_uri, table_ref, job_config=job_config)
+    load_job.result()
+    print(f"✅ BigQuery load complete: {bq_dataset}.{bq_table}")
