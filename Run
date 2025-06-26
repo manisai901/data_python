@@ -1,29 +1,52 @@
+airflow.providers.google.cloud.operators.bigquery
+
 from airflow import models
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.operators.python import PythonOperator
+from airflow.utils.email import send_email
 from datetime import datetime, timedelta
+from google.cloud import bigquery
 
-# Default DAG arguments
+# Default arguments
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
+    "email": ["dataops@example.com"],  # Replace with your email(s)
+    "email_on_failure": True,
+    "email_on_retry": True,
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
 }
 
-# Replace with your actual project and dataset/table names
+# Constants
 PROJECT_ID = "your-gcp-project-id"
 SOURCE_TABLE = f"{PROJECT_ID}.corp_sec_sem.source_table"
 TARGET_TABLE = f"{PROJECT_ID}.rto.target_table"
+LOCATION = "us"
 
-# Define your DAG
+def log_row_counts(**context):
+    client = bigquery.Client()
+    source_query = f"SELECT COUNT(*) as count FROM `{SOURCE_TABLE}`"
+    target_query = f"SELECT COUNT(*) as count FROM `{TARGET_TABLE}`"
+
+    source_count = list(client.query(source_query))[0].count
+    target_count = list(client.query(target_query))[0].count
+
+    log_msg = f"Row counts after sync:\n- Source table: {source_count}\n- Target table: {target_count}"
+    print(log_msg)
+
+    # Send email
+    send_email(to=["dataops@example.com"], subject="BigQuery Sync Row Counts", html_content=log_msg)
+
+
 with models.DAG(
-    dag_id="merge_corp_sec_to_rto",
-    description="MERGE from corp_sec_sem to rto dataset in BigQuery",
-    schedule_interval="0 1 * * *",  # Runs daily at 1 AM IST
+    dag_id="merge_corp_sec_to_rto_with_logging",
+    description="MERGE from corp_sec_sem to rto dataset in BigQuery with logging and email",
+    schedule_interval="0 1 * * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
     default_args=default_args,
-    tags=["bigquery", "merge", "gcp", "composer"],
+    tags=["bigquery", "merge", "logging", "alerting"],
 ) as dag:
 
     merge_job = BigQueryInsertJobOperator(
@@ -46,7 +69,13 @@ with models.DAG(
                 "useLegacySql": False,
             }
         },
-        location="us",  # Change if your dataset is in another region
+        location=LOCATION,
     )
 
-    merge_job
+    validate_counts = PythonOperator(
+        task_id="log_row_counts_and_notify",
+        python_callable=log_row_counts,
+        provide_context=True
+    )
+
+    merge_job >> validate_counts
