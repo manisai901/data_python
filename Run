@@ -1,6 +1,52 @@
-customer_id,first_name,last_name,email,country
-C001,John,Doe,john.doe@example.com,USA
-C002,Jane,Smith,jane.smith@example.com,Canada
-C003,Ali,Khan,ali.khan@example.com,India
-C004,Sara,Lee,sara.lee@example.com,UK
-C005,Raj,Patel,raj.patel@example.com,India
+from airflow import models
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from datetime import datetime, timedelta
+
+# Default DAG arguments
+default_args = {
+    "owner": "airflow",
+    "depends_on_past": False,
+    "retries": 2,
+    "retry_delay": timedelta(minutes=5),
+}
+
+# Replace with your actual project and dataset/table names
+PROJECT_ID = "your-gcp-project-id"
+SOURCE_TABLE = f"{PROJECT_ID}.corp_sec_sem.source_table"
+TARGET_TABLE = f"{PROJECT_ID}.rto.target_table"
+
+# Define your DAG
+with models.DAG(
+    dag_id="merge_corp_sec_to_rto",
+    description="MERGE from corp_sec_sem to rto dataset in BigQuery",
+    schedule_interval="0 1 * * *",  # Runs daily at 1 AM IST
+    start_date=datetime(2024, 1, 1),
+    catchup=False,
+    default_args=default_args,
+    tags=["bigquery", "merge", "gcp", "composer"],
+) as dag:
+
+    merge_job = BigQueryInsertJobOperator(
+        task_id="merge_source_to_target_bq",
+        configuration={
+            "query": {
+                "query": f"""
+                MERGE `{TARGET_TABLE}` T
+                USING `{SOURCE_TABLE}` S
+                ON T.id = S.id
+                WHEN MATCHED THEN
+                  UPDATE SET
+                    T.col1 = S.col1,
+                    T.col2 = S.col2,
+                    T.last_updated = S.last_updated
+                WHEN NOT MATCHED THEN
+                  INSERT (id, col1, col2, last_updated)
+                  VALUES (S.id, S.col1, S.col2, S.last_updated);
+                """,
+                "useLegacySql": False,
+            }
+        },
+        location="us",  # Change if your dataset is in another region
+    )
+
+    merge_job
