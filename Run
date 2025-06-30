@@ -1,82 +1,69 @@
-https://chatgpt.com/canvas/shared/685cdea8fe488191804b94a8d631a962
-airflow.providers.google.cloud.operators.bigquery
+"""
+Airflow DAG to copy a BigQuery table from one dataset to another
 
-from airflow import models
-from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+Source:
+    sandbox-corp-odin-devl-f930.corp_sec.t_badge_events
+Target:
+    sandbox-corp-odin-dev1-f930.rto.t_badge_events
+
+Author: ChatGPT (for you!)
+"""
+
+from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.utils.email import send_email
-from datetime import datetime, timedelta
+from airflow.utils.dates import days_ago
+from datetime import timedelta
+import logging
+
 from google.cloud import bigquery
 
-# Default arguments
+# Setup logging
+LOGGER = logging.getLogger("airflow.task")
+LOGGER.setLevel(logging.INFO)
+
+# Define default DAG arguments
 default_args = {
-    "owner": "airflow",
-    "depends_on_past": False,
-    "email": ["dataops@example.com"],  # Replace with your email(s)
-    "email_on_failure": True,
-    "email_on_retry": True,
-    "retries": 2,
-    "retry_delay": timedelta(minutes=5),
+    'depends_on_past': False,
+    'start_date': days_ago(1),
+    'retries': 2,
+    'retry_delay': timedelta(minutes=2)
 }
 
-# Constants
-PROJECT_ID = "your-gcp-project-id"
-SOURCE_TABLE = f"{PROJECT_ID}.corp_sec_sem.source_table"
-TARGET_TABLE = f"{PROJECT_ID}.rto.target_table"
-LOCATION = "us"
-
-def log_row_counts(**context):
-    client = bigquery.Client()
-    source_query = f"SELECT COUNT(*) as count FROM `{SOURCE_TABLE}`"
-    target_query = f"SELECT COUNT(*) as count FROM `{TARGET_TABLE}`"
-
-    source_count = list(client.query(source_query))[0].count
-    target_count = list(client.query(target_query))[0].count
-
-    log_msg = f"Row counts after sync:\n- Source table: {source_count}\n- Target table: {target_count}"
-    print(log_msg)
-
-    # Send email
-    send_email(to=["dataops@example.com"], subject="BigQuery Sync Row Counts", html_content=log_msg)
-
-
-with models.DAG(
-    dag_id="merge_corp_sec_to_rto_with_logging",
-    description="MERGE from corp_sec_sem to rto dataset in BigQuery with logging and email",
-    schedule_interval="0 1 * * *",
-    start_date=datetime(2024, 1, 1),
-    catchup=False,
+# Instantiate the DAG
+with DAG(
+    dag_id='bq_copy_t_badge_events_dag',
     default_args=default_args,
-    tags=["bigquery", "merge", "logging", "alerting"],
+    description='Copy BigQuery table from corp_sec to rto dataset',
+    schedule_interval=None,
+    catchup=False,
+    tags=['bigquery', 'copy', 'composer']
 ) as dag:
 
-    merge_job = BigQueryInsertJobOperator(
-        task_id="merge_source_to_target_bq",
-        configuration={
-            "query": {
-                "query": f"""
-                MERGE `{TARGET_TABLE}` T
-                USING `{SOURCE_TABLE}` S
-                ON T.id = S.id
-                WHEN MATCHED THEN
-                  UPDATE SET
-                    T.col1 = S.col1,
-                    T.col2 = S.col2,
-                    T.last_updated = S.last_updated
-                WHEN NOT MATCHED THEN
-                  INSERT (id, col1, col2, last_updated)
-                  VALUES (S.id, S.col1, S.col2, S.last_updated);
-                """,
-                "useLegacySql": False,
-            }
-        },
-        location=LOCATION,
-    )
+    def copy_bq_table(**context):
+        client = bigquery.Client()
 
-    validate_counts = PythonOperator(
-        task_id="log_row_counts_and_notify",
-        python_callable=log_row_counts,
+        source_table = "sandbox-corp-odin-devl-f930.corp_sec.t_badge_events"
+        target_table = "sandbox-corp-odin-dev1-f930.rto.t_badge_events"
+
+        LOGGER.info(f"✅ Starting copy from {source_table} to {target_table}")
+
+        copy_job = client.copy_table(
+            sources=source_table,
+            destination=target_table,
+            job_config=bigquery.CopyJobConfig(
+                write_disposition="WRITE_TRUNCATE"
+            )
+        )
+
+        copy_job.result()
+
+        LOGGER.info(f"✅ Copy completed successfully: {source_table} → {target_table}")
+
+    # Define the PythonOperator task
+    copy_table_task = PythonOperator(
+        task_id='copy_bigquery_table',
+        python_callable=copy_bq_table,
         provide_context=True
     )
 
-    merge_job >> validate_counts
+    copy_table_task
