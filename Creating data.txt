@@ -1,3 +1,13 @@
-Here’s a concise Jira board comment you can use:
 
-**Prepared DAG and pushed code to `dev_01` branch; ready for testing as per requirements.**
+**Subject:** Leave Request (2nd July to 4th July)
+
+Hi \[Manager's Name],
+
+I wanted to inform you that my grandfather passed away yesterday. I will need to take leave from 2nd July to 4th July (3 days) to attend the rituals and be with my family.
+
+Kindly approve my leave request. I will resume work on 5th July and continue with my deliverables as planned.
+
+Thank you for your understanding and support.
+
+Regards,
+Manikanta
