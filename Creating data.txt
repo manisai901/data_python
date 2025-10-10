@@ -1,14 +1,1 @@
-Sure! Here’s a **polite, professional** reply you can send:
-
----
-
-**Subject:** Re: Working Status
-
-Hi Ankit,
-
-Apologies for the confusion. I have been working today and am currently preparing the BQ-to-BQ documentation.
-
-Please let me know if you'd like any specific updates or if there’s anything else I should prioritize.
-
-Regards,
-Manikanta
+python code
