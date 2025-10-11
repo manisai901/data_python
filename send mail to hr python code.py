@@ -2,16 +2,21 @@ import pandas as pd
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Load Excel file
 file_path = "C:/Users/Admin/Downloads/Company Wise HR Contacts - HR Contacts.xlsx"
 df = pd.read_excel(file_path)
-# "C:/Users/Admin/Downloads/Company Wise HR Contacts - HR Contacts.xlsx"
+
 # Email configuration
-SMTP_SERVER = "smtp.gmail.com"  # Change if using another email provider
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SENDER_EMAIL = "manikantasaivootla@gmail.com"
-SENDER_PASSWORD = "mjgt ulda"  # Use App Password if using Gmail
+SENDER_EMAIL = "manikantasaivootla367@gmail.com"
+SENDER_PASSWORD = "tizn lnvr bvwc rnnz"  # Use Gmail App Password, not your real password
+
+# Path to your resume file
+resume_path = "C:/Users/Admin/Documents/Mani/Manikanta_Sai_3.5_Years.pdf"
 
 # Subject and Message Template
 subject = "Manikanta Sai || GCP Data Engineer 4.1 Years of Experience || Immediate Joiner|| Mobile: 9603071591"
@@ -19,14 +24,14 @@ message_template = """Dear {name},
 
 I hope this message finds you well.
 
-I am excited to apply for the GCP Data Engineer position. With 4.1 years of experience in building scalable data pipelines on (GCP) using technologies such as BigQuery,GCS, Airflow, Dataflow, Pub/Sub, Google cloud SDK, DataProc, Jenkins, Git and SQL/Python,PySpark and  BigData technologies such as Hadoop and Kafka. I am confident in my ability to contribute effectively to your team.
+I am excited to apply for the GCP Data Engineer position. With 4.1 years of experience in building scalable data pipelines on (GCP) using technologies such as BigQuery, GCS, Airflow, Dataflow, Pub/Sub, Google Cloud SDK, Dataproc, Jenkins, Git and SQL/Python, PySpark and BigData technologies such as Hadoop and Kafka. I am confident in my ability to contribute effectively to your team.
 
 I have attached my updated resume for your reference and would be eager to discuss how I can contribute to your organization. I am available to join immediately.
 
 Thank you for your time and consideration. I look forward to hearing from you.
 
 Best regards,  
-Manikanta Sai Vootla
+Manikanta Sai Vootla  
 M: 9014966629
 """
 
@@ -45,9 +50,22 @@ try:
         msg["To"] = recipient_email
         msg["Subject"] = subject
 
+        # Add message body
         message = message_template.format(name=recipient_name)
         msg.attach(MIMEText(message, "plain"))
 
+        # Attach resume
+        with open(resume_path, "rb") as attachment:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename={resume_path.split('/')[-1]}",
+        )
+        msg.attach(part)
+
+        # Send email
         server.sendmail(SENDER_EMAIL, recipient_email, msg.as_string())
         print(f"Email sent to {recipient_name} ({recipient_email})")
 
