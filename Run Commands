@@ -1,0 +1,65 @@
+1. docker compose up airflow-init
+2. docker compose up -d
+3. docker compose logs -f
+4. docker compose down
+5. docker compose down --volumes --rmi all
+6. docker compose ps
+ docker ps --all
+ --- to create .env file with current user id ---
+ echo -e "AIRFLOW_UID=$(id -u)\nAIRFLOW_GID=0" > .env
+  docker compose run airflow-worker pip install -r requirements.txt
+   pip install -r requirements.txt
+ mkdir ./data ./scripts ./logs ./plugins ./dags
+--- to create required sub folders ---
+  mkdir -p dags logs plugins data/gcs_mock data/bigquery_mock
+
+--- to restart webserver ---
+ docker compose restart airflow-webserver
+
+
+ --- to trigger perticular dag ---
+ docker compose exec airflow-webserver airflow dags trigger youtube_etl_full
+
+ --- to pause perticular dag ---
+  docker compose exec airflow-webserver airflow dags unpause youtube_etl_full
+    --- to unpause perticular dag ---
+    docker compose exec airflow-webserver airflow dags pause youtube_etl_full
+
+--- to see the list of dags ---
+  docker compose exec airflow-webserver airflow dags list-import-errors
+
+
+7. docker compose exec webserver bash
+8. docker compose exec scheduler bash
+9. docker compose exec postgres psql -U airflow -d airflow
+10. docker compose exec redis redis-cli
+11. docker compose restart
+12. docker compose stop
+13. docker compose start
+14. docker compose build
+15. docker compose pull
+16. docker compose config
+17. docker compose run --rm <service_name> <command>
+18. docker compose logs <service_name>
+19. docker compose top
+20. docker compose version
+21. docker compose help
+22. docker compose cp <source_path> <destination_path>
+23. docker compose scale <service_name>=<number_of_instances>
+24. docker compose port <service_name> <private_port>
+25. docker compose events
+26. docker compose exec <service_name> env
+27. docker compose exec <service_name> ls /path/to/directory
+28. docker compose exec <service_name> cat /path/to/file
+29. docker compose exec <service_name> tail -f /path/to/logfile
+30. docker compose exec <service_name> top
+31. docker compose exec <service_name> df -h
+32. docker compose exec <service_name> free -m
+33. docker compose exec <service_name> ps aux
+34. docker compose exec <service_name> netstat -tuln
+35. docker compose exec <service_name> curl http://localhost:8080
+36. docker compose exec <service_name> ping google.com
+37. docker compose exec <service_name> apt-get update
+38. docker compose exec <service_name> apt-get install <package_name>
+39. docker compose exec <service_name> yum update
+40. docker compose exec <service_name> yum install <package_name>
