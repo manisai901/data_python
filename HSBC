@@ -1,0 +1,11 @@
+it should be will trail and error based
+where it time taking process
+like and not like need to check
+where partitioning is using & if is there or clustering like string fild need to be check
+check dev env like dev sample data to on weather data is which porpoise
+
+1.It will be a trial-and-error process, .multiple trials might be needed. While checking the SQLs, I noticed some queries processing very small MB sizes in development or test regions , so I need to understand the exact issue and region.
+
+2. Dev data is very limited, so I will need non-prod data to check how long the queries actually take with real volume.
+
+3. When testing in the dev environment, the file sizes are very small, so the performance behaviour is not accurate.
