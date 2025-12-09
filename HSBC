@@ -9,3 +9,59 @@ check dev env like dev sample data to on weather data is which porpoise
 2. Dev data is very limited, so I will need non-prod data to check how long the queries actually take with real volume.
 
 3. When testing in the dev environment, the file sizes are very small, so the performance behaviour is not accurate.
+
+Based on the conversation transcript provided, here is the full informational content regarding the SQL/BigQuery optimization strategies, testing procedures, and communication protocols discussed.
+
+### **1. Technical Optimization Strategy**
+The primary goal discussed is optimizing existing database queries (likely in Google BigQuery, given the references to "BI Engine" and query costs).
+
+*   **Partitioning and Clustering:**
+    *   Identify the **Base Tables** and their **Key Fields**.
+    *   Check if **Partitioning** is defined on the base tables. If partitions exist, ensure that the partition fields are being utilized in the `WHERE` clauses and `JOIN` conditions.
+    *   If the partition field is used correctly in these clauses, the query engine can prune data, leading to automatic performance improvement.
+    *   **Clustering** should also be checked alongside partitioning.
+    *   *Action Item:* If the existing table lacks partitioning, create a parallel test table with partitioning and clustering defined, then run the same query to compare performance.
+
+*   **Column Selection (Avoiding `SELECT *`):**
+    *   Review the code to see if `SELECT *` (or `SELECT table.*`) is used. This retrieves all columns from the Base or Child tables.
+    *   Identify exactly which columns are actually needed for the final output.
+    *   Replace `SELECT *` with specific column names to avoid processing unnecessary data.
+
+*   **String Function Optimization:**
+    *   Look for `LIKE` and `NOT LIKE` operators. There is a need to search for a more optimized function (possibly Regex or specific string handling functions) to replace these for better performance.
+
+*   **BI Engine (Preferred Tables):**
+    *   Check if the **BI Engine** is enabled or if "Preferred Tables" are defined.
+    *   *Note:* This should be the last step in the optimization checklist.
+
+*   **Duplicate Checks:**
+    *   Perform a check for duplicate records as part of the validation process.
+
+### **2. Testing and Execution Guidelines**
+*   **Cost Management:** Be cautious when running queries in the Production environment because every execution incurs a charge.
+*   **Initial Testing:**
+    *   Do not use `SELECT *` for initial testing. Instead, use `SELECT COUNT(*)` to verify record counts first.
+    *   Use the Development environment for initial runs where possible.
+*   **Validation:** Compare the record counts (e.g., the 250 rows mentioned in the specific table) and output consistency between the original query and the optimized query.
+
+### **3. Workflow: The "Trial and Error" Approach**
+The mentor advises treating the optimization as a series of documented "Trials" rather than a single fix.
+
+*   **Record Your Trials:** Maintain a record of every iteration to track what changes caused what results.
+    *   **Trial 1:** Check Partitioning and Clustering keys (or create a test table with them).
+    *   **Trial 2:** Replace `SELECT *` with specific columns.
+    *   **Trial 3:** Optimize `LIKE`/`NOT LIKE` operators.
+*   **Methodology:** Run the specific trial, check the result/improvement, and ensure the output data matches the original.
+
+### **4. Communication Strategy**
+The conversation outlines how to communicate progress to different stakeholders.
+
+*   **For the Daily Stand-up Call (General Team):**
+    *   Keep it high-level and simple. The team may not be technical enough to need deep details.
+    *   State that access issues are resolved and you have the Project ID/Dataset.
+    *   Mention that you are applying "SQL Optimization Techniques" and best practices (checking partitioning, column selection) and comparing them with existing code.
+
+*   **For Management/Technical Leads:**
+    *   **Create a Strategy Document:** Do not explain everything verbally every day. Prepare a document outlining the strategy (Trial 1, Trial 2, etc.) and provide a walkthrough.
+    *   **Set Expectations:** Explain that this is a "Trial and Error" process requiring different iterations to find the best solution. Provide time estimates for these trials.
+    *   **Benefit:** Presenting a clear strategy demonstrates vision and experience. It typically buys the developer 1–2 months of time to work without constant pressure or micromanagement from leadership.
