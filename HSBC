@@ -1,3 +1,10 @@
+Hi, I have few queries regarding the SQL scripts:
+
+1. I need to know if the base tables have partition fields or clustering columns.
+2. I’m reviewing the significant issues to identify where the main optimisation is needed.
+3 issue is in dev or prod — dev has very small data, so if it’s a prod issue, I’ll need prod/non-prod access to test actual data volume and execution time.
+
+
 it should be will trail and error based
 where it time taking process
 like and not like need to check
