@@ -1,47 +1,35 @@
 
 -- =============================================================
 -- File: FOTC_RWA_FACILITY_INTRA_OPTIMISED.sql
--- Purpose:
---   * Optimise SQL (readability & minor cost improvements)
---   * Remove redundant WITH layers (no logic change)
---   * Avoid unnecessary field renaming (keep traceability)
---   * Re-format SQL structure
 -- NOTE:
---   Business logic is UNCHANGED.
+--   * [$target_dataset] placeholders are intentionally preserved
+--   * Business logic unchanged
+--   * Only formatting, minor optimisation, and redundant WITH cleanup
 -- =============================================================
 
 WITH
--- -------------------------------------------------------------
--- Parent facility check (deduplicated by design)
--- -------------------------------------------------------------
 CDM_CREDIT_REPAIR_For_Parent_Check AS (
   SELECT
     governing_credit_facility_identifier,
     grca_entity_identifier,
     credit_facility_system_identifier
   FROM
-    hsbc-10437964-radar28-dev.EU.bquxjob_2342bb73_19b354dff6d.FOTC_COMMON_FACILITY_INTRA
+    [$target_dataset].FOTC_COMMON_FACILITY_INTRA
   GROUP BY
     governing_credit_facility_identifier,
     grca_entity_identifier,
     credit_facility_system_identifier
 ),
 
--- -------------------------------------------------------------
--- FX rates lookup (single logical definition)
--- -------------------------------------------------------------
 DMDS AS (
   SELECT
-    CCY_CODE   AS source_currency,
-    EXCH_CCY  AS target_currency,
+    CCY_CODE  AS source_currency,
+    EXCH_CCY AS target_currency,
     EXCH_RATE AS exchange_rate
   FROM
-    hsbc-10437964-radar28-dev.EU.bquxjob_2342bb73_19b354dff6d.DMDS_USD_FX_RATES
+    [$target_dataset].DMDS_USD_FX_RATES
 ),
 
--- -------------------------------------------------------------
--- Regulator-specific parameters
--- -------------------------------------------------------------
 RWA_RD_REGULATOR_SPECIFIC_VALUES AS (
   SELECT
     Regulator,
@@ -49,12 +37,11 @@ RWA_RD_REGULATOR_SPECIFIC_VALUES AS (
     Parameter_Value,
     Parameter_Value_String
   FROM
-    hsbc-10437964-radar28-dev.EU.bquxjob_2342bb73_19b354dff6d.FOTC_RD_REGULATOR_SPECIFIC_VALUES
+    [$target_dataset].FOTC_RD_REGULATOR_SPECIFIC_VALUES
 ),
 
 -- -------------------------------------------------------------
--- Base repair + committed indicator fallback
--- (Merged 00220 without changing logic)
+-- Merged 00220 + 00230 (logic unchanged)
 -- -------------------------------------------------------------
 CDM_CREDIT_REPAIR_00230 AS (
   SELECT
@@ -94,26 +81,23 @@ CDM_CREDIT_REPAIR_00230 AS (
     END AS Commited_Indicator_Final
 
   FROM
-    hsbc-10437964-radar28-dev.EU.bquxjob_2342bb73_19b354dff6d.FOTC_RWA_FACILITY_INTRA_INTERIM_1 r
+    [$target_dataset].FOTC_RWA_FACILITY_INTRA_INTERIM_1 r
 ),
 
 -- -------------------------------------------------------------
--- Parent / child mapping (original field names preserved)
+-- Parent / child mapping (no semantic renaming)
 -- -------------------------------------------------------------
 MIF_L_GOV AS (
   SELECT
     r.*,
-    local_credit_facility_identifier,
-    governing_credit_facility_identifier,
-    grca_entity_identifier,
-    CARM_Site_Saracen_ID
+    r.local_credit_facility_identifier,
+    r.governing_credit_facility_identifier,
+    r.grca_entity_identifier,
+    r.CARM_Site_Saracen_ID
   FROM
     CDM_CREDIT_REPAIR_00230 r
 ),
 
--- -------------------------------------------------------------
--- Child commitment evaluation
--- -------------------------------------------------------------
 CHECK_ALL_CHILD_ARE_UNCOMMITED AS (
   SELECT
     local_credit_facility_identifier AS Facility_ID,
@@ -143,9 +127,6 @@ CHECK_ALL_CHILD_ARE_UNCOMMITED AS (
     Child_Committed_Indicator
 ),
 
--- -------------------------------------------------------------
--- Leaf facility flag
--- -------------------------------------------------------------
 CDM_CREDIT_REPAIR_00300 AS (
   SELECT
     r.*,
@@ -168,9 +149,6 @@ CDM_CREDIT_REPAIR_00300 AS (
    AND cu.Child_Committed_Indicator = 'N'
 ),
 
--- -------------------------------------------------------------
--- FX enrichment and expiry validation
--- -------------------------------------------------------------
 CDM_CREDIT_REPAIR_00400 AS (
   SELECT
     r.*,
@@ -212,9 +190,6 @@ CDM_CREDIT_REPAIR_00400 AS (
     ON fx_carm.source_currency = r.CARM_Limit_CCY
 )
 
--- -------------------------------------------------------------
--- Final output (structure unchanged)
--- -------------------------------------------------------------
 SELECT
   r.*,
 
