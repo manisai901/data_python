@@ -1,4 +1,4 @@
-sql 3 file 
+-- SQl 3 
 CREATE
 TEMPORARY FUNCTION FOTC_UDF_TO_DATE(str_date STRING, pattern STRING) AS (CASE
                                                                              WHEN str_date IS NULL
