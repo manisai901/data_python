@@ -1,460 +1,558 @@
-CREATE
-TEMPORARY FUNCTION FOTC_UDF_TO_DATE(str_date STRING, pattern STRING) AS (CASE
-                                                                             WHEN str_date IS NULL
-                                                                                  OR TRIM(str_date) = '' THEN NULL
-                                                                             WHEN UPPER(pattern) = 'YYD' THEN DATE_ADD(parse_DATE('%y', SUBSTR(str_date, 1, 2)), INTERVAL SAFE_CAST(SUBSTR(str_date, 3, 3) AS INT64)-1 DAY)
-                                                                             ELSE PARSE_DATE(CASE
-                                                                                                 WHEN UPPER(pattern) = 'DDMMYYYY' THEN '%d%m%Y'
-                                                                                                 WHEN UPPER(pattern) = 'YYYY-MM-DD' THEN '%Y-%m-%d'
-                                                                                                 WHEN UPPER(pattern) = 'DD-MMM-YY' THEN '%d-%b-%y'
-                                                                                                 WHEN UPPER(pattern) = 'MM/DD/YYYY' THEN '%m/%d/%Y'
-                                                                                                 ELSE '%Y%m%d'
-                                                                                             END , str_date)
-                                                                         END);
+CREATE TEMPORARY FUNCTION
+  FOTC_UDF_TO_DATE(str_date STRING,
+    pattern STRING) AS (CASE
+      WHEN str_date IS NULL OR TRIM(str_date)='' THEN NULL
+      WHEN UPPER(pattern)='YYD' THEN DATE_ADD(parse_DATE('%y',
+        SUBSTR(str_date, 1, 2)), INTERVAL SAFE_CAST(SUBSTR(str_date, 3, 3) AS INT64)-1 DAY)
+    ELSE
+    PARSE_DATE(CASE
+        WHEN UPPER(pattern)='DDMMYYYY' THEN '%d%m%Y'
+        WHEN UPPER(pattern)='YYYY-MM-DD' THEN '%Y-%m-%d'
+        WHEN UPPER(pattern)='DD-MMM-YY' THEN '%d-%b-%y'
+		WHEN UPPER(pattern) = 'MM/DD/YYYY' THEN '%m/%d/%Y'
+      ELSE
+      '%Y%m%d'
+    END
+      ,
+      str_date)
+  END
+    );
 
-WITH FOTC_RD_OVERRIDE_FAC_Adjustable AS
-  (SELECT *
-   FROM [$target_dataset].FOTC_RD_OVERRIDE_FAC
-   WHERE CURRENT_TIMESTAMP() >= from_date
-     AND CURRENT_TIMESTAMP() <= TO_DATE
-     AND "[$run_type]" NOT LIKE '%UNADJ%'),
-     ESR_GRP_GLMFACIL AS
-  (SELECT TRIM(Facility_Class) AS Facility_Class,
-          TRIM(Facility_code) AS Local_Site_Code,
-          SAFE_CAST('[$reporting_date]' AS DATE) AS Reporting_Date --FINOTC-15994
+WITH
+FOTC_RD_OVERRIDE_FAC_Adjustable As
+(
+Select * from [$target_dataset].FOTC_RD_OVERRIDE_FAC
+  WHERE CURRENT_TIMESTAMP() >= from_date AND CURRENT_TIMESTAMP() <= to_date
+AND "[$run_type]" NOT LIKE '%UNADJ%'
 
-   FROM [$target_dataset].ESR_GRP_GLMFACIL),
-     RWA_RD_REGULATOR_SPECIFIC_VALUES AS
-  (SELECT Regulator AS Regulator,
-          PARAMETER_NAME AS PARAMETER_NAME,
-                            Parameter_Value,
-                            Parameter_Value_String
-   FROM [$target_dataset].FOTC_RD_REGULATOR_SPECIFIC_VALUES),
-     RWA_RD_SITE_ATTRIBUTES AS
-  (SELECT Site_Id AS Site_Id,
-          PARAMETER AS PARAMETER,
-                       Value AS Value,
-                       Regulator AS Regulator
-   FROM [$target_dataset].FOTC_RD_SITE_ATTRIBUTES),
-     FOTC_CARM_FACILITY_INTRA AS
-  (SELECT DISTINCT *
-   EXCEPT (__UUID)
-   FROM [$target_dataset].FOTC_CARM_FACILITY_INTRA),
-     FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP AS
-  (SELECT Category,
-          Sub_Category,
-          Legal_Entity,
-          System_ID,
-          Local_Code,
-          Group_Code,
-          Comments
-   FROM [$target_dataset].FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP),
-     CDM_CREDIT_REPAIR_00100 AS
-  (SELECT FAC_COMMON.local_credit_facility_identifier,
-          CASE
-              WHEN "[$batch_run_type]" = "B2RWA" THEN NULL
-              ELSE FAC_COMMON.booking_entity_identifier ----FINOTC-14155
+),
 
-          END AS booking_entity_identifier,
-          FAC_COMMON.grca_Entity_Identifier, ---Added New column
- FAC_COMMON.credit_facility_system_identifier,
- FAC_COMMON.Unique_Facility_ID,
- FAC_COMMON.Unique_CARM_Facility_ID,
- FAC_COMMON.Unique_Governing_Facility_ID,
- FAC_COMMON.Unique_IP_ID,
- FAC_COMMON.Entity_Saracen_Code_1,
- FAC_COMMON.booking_entity_identifier AS booking_entity_identifier_1,
- FAC_COMMON.governing_credit_facility_identifier,
- FAC_COMMON.primary_obligor_party_system_identifier,
- FAC_COMMON.primary_obligor_party_identifier,
- FAC_COMMON.primary_obligor_party_identifier_type_code,
- FAC_COMMON.secondary_obligor_party_identifier,
- FAC_COMMON.local_credit_facility_type_code,
- FAC_COMMON.banking_or_trading_book_code,
- FAC_COMMON.committed_indicator,
- FAC_COMMON.unconditionally_cancellable_indicator,
- FAC_COMMON.credit_facility_revolving_type_indicator,
- FAC_COMMON.credit_facility_offer_date,
- FAC_COMMON.facility_offer_acceptance_date,
- FAC_COMMON.credit_facility_first_drawdown_date,
- FAC_COMMON.credit_facility_final_drawdown_date, ---Corrected spelling
- FAC_COMMON.facility_expiry_date,
- FAC_COMMON.advised_credit_limit_amount_in_transaction_currency,
- FAC_COMMON.advised_credit_limit_amount_transaction_currency_code,
- FAC_COMMON.undrawn_balance_in_transaction_currency,
- FAC_COMMON.undrawn_balance_transaction_currency_code,
- FAC_COMMON.undrawn_balance_in_functional_currency,
- FAC_COMMON.undrawn_balance_functional_currency_code,
- FAC_COMMON.cost_centre_number,
- FAC_COMMON.local_gl_reconciliation_key,
- FAC_COMMON.undrawn_commitment_grca_reconciliation_key,
- FAC_COMMON.credit_officer_identifier AS credit_officer_identifier_Interim,
- FAC_COMMON.local_relationship_manager_identifier,
- FAC_COMMON.credit_facility_limit_next_review_date,
- FAC_COMMON.standby_facility_indicator,
- FAC_COMMON.facility_notice_period_days_count,
- FACILITY_BESPOKE_REPAIR.Secured_Indicator AS RWA_Secured_Indicator, --FINOTC-31583
- FACILITY_BESPOKE_REPAIR.End_of_period_balance_transaction_currency, --FINOTC-31583
- FACILITY_BESPOKE_REPAIR.Master_Category_A_Exposure_Limit, --FINOTC-31583
- FAC_COMMON.proportion_secured_percentage,
- FAC_COMMON.liquidity_or_credit_facility_code,
- FAC_COMMON.availability_expiration_date,
- FAC_COMMON.recognition_or_de_recognition_date,
- FAC_COMMON.advised_indicator,
- FAC_COMMON.unweighted_utilisation_amount_in_transaction_currency,
- FAC_COMMON.unweighted_utilisation_amount_transaction_currency_code,
- FAC_COMMON.credit_facility_arrangement_source_system_code,
- FAC_COMMON.credit_facility_arrangement_local_number,
- FAC_COMMON.credit_facility_arrangement_suffix_number,
- FAC_COMMON.undrawn_balance_nominal_account_number,
- FAC_COMMON.undrawn_balance_source_chartfield_code,
- FAC_COMMON.detailed_facility_code,
- FAC_COMMON.credit_facility_or_product_chartfield_code,
- FAC_COMMON.affiliate_chartfield_code,
- FAC_COMMON.summary_customer_type_chartfield_code,
- FAC_COMMON.detailed_customer_type_chartfield_code,
- FAC_COMMON.recurring_fee_or_interest_percentage,
- FAC_COMMON.non_usage_fee_amount_in_transaction_currency,
- FAC_COMMON.non_usage_fee_amount_transaction_currency_code,
- FAC_COMMON.up_front_fee_amount_in_transaction_currency,
- FAC_COMMON.up_front_fee_amount_transaction_currency_code, --- New attribute added due to override
- RWA_Run_Type,
- committed_indicator_Pre_Override,
- Committed_Indicator_Override,
- unconditionally_cancellable_indicator_Pre_Override,
- Unconditionally_Cancellable_Indicator_Override,
- facility_expiry_date_Pre_Override,
- facility_expiry_date_Override,
- undrawn_balance_in_transaction_currency_Pre_Override,
- undrawn_balance_in_transaction_currency_Override,
- undrawn_balance_transaction_currency_code_Pre_Override,
- undrawn_balance_transaction_currency_code_Override,
- undrawn_commitment_grca_reconciliation_key_Pre_Override,
- Undrawn_Commitment_Grca_Reconciliation_Key_Override,
- credit_facility_limit_next_review_date_Pre_Override,
- credit_facility_limit_next_review_date_Override,
- Committed_Indicator_Override_Type_Indicator,
- Unconditionally_Cancellable_Indicator_Override_Type_Indicator,
- facility_expiry_date_Override_Type_Indicator,
- undrawn_balance_in_transaction_currency_Override_Type_Indicator,
- undrawn_balance_transaction_currency_code_Override_Type_Indicator,
- Undrawn_Commitment_Grca_Reconciliation_Key_Override_Type_Indicator,
- credit_facility_limit_next_review_date_Override_Type_Indicator,
- CARM_F_FAC.Involved_Party_Alternative_ID_Type AS CARM_Involved_Party_Alternative_ID_Type,
- CARM_F_FAC.Facility_Customer_ID AS CARM_Facility_Customer_ID,
- CARM_F_FAC.Group_System_ID AS CARM_Group_system_ID,
- CARM_F_FAC.Credit_Proposal_Serial_Number AS CARM_Credit_Proposal_Serial_Number,
- CARM_F_FAC.Facility_Currency_Code AS CARM_Facility_Currency_Code,
- CARM_F_FAC.Relationship_Identifier AS CARM_Relationship_Identifier,
- CARM_F_FAC.Ultimate_Parent_Facility_Flag AS CARM_Ultimate_Parent_Facility_Flag,
- CARM_F_FAC.DLGD AS CARM_DLGD,
- CARM_F_FAC.ELGD AS CARM_ELGD,
- CARM_F_FAC.LGD AS CARM_LGD,
- CARM_F_FAC.LGD_Indicator AS CARM_LGD_Indicator,
- CARM_F_FAC.availability_expiration_date AS CARM_Availability_Expiration_Date,
- CARM_F_FAC.Application_Approval_Date AS CARM_Application_Approval_Date,
- CARM_F_FAC.Committed_Indicator_Fallback AS CARM_Commited_Indicator,
- CARM_F_FAC.Regulatory_Specialised_Lending_Type AS CARM_Regulatory_Specialised_Lending_Type,
- CARM_F_FAC.Supervisory_Category AS CARM_Supervisory_Category,
- CARM_F_FAC.Proposed_Supervisory_Category AS CARM_Proposed_Supervisory_Category,
- CARM_F_FAC.Overridden_Supervisory_Category AS CARM_Overridden_Supervisory_Category,
- CARM_F_FAC.Proposed_Regulatory_Specialised_Lending_PD AS CARM_Proposed_Regulatory_Specialised_Lending_PD,
- CARM_F_FAC.Overridden_Regulatory_Specialised_Lending_PD AS CARM_Overridden_Regulatory_Specialised_Lending_PD,
- CARM_F_FAC.Regulatory_Specialised_Lending_Scorecard AS CARM_Regulatory_Specialised_Lending_Scorecard,
- CARM_F_FAC.Facility_Scorecard AS CARM_Facility_Scorecard,
- CARM_F_FAC.Overridden_Loss_Given_Default_Override_Category_Code AS CARM_Overridden_Loss_Given_Default_Override_Category_Code,
- CARM_F_FAC.Overridden_Downturn_Loss_Given_Default_Percentage AS CARM_Overridden_Downturn_Loss_Given_Default_Percentage,
- CARM_F_FAC.Downturn_Loss_Given_Default_Percentage AS CARM_Downturn_Loss_Given_Default_Percentage,
- CARM_F_FAC.Overridden_Downturn_Loss_Given_Default_Percentage AS CARM_Overridden_Loss_Given_Default_Percentage,
- CARM_F_FAC.Proposed_Loss_Given_Default_Percentage AS CARM_Proposed_Loss_Given_Default_Percentage,
- CARM_F_FAC.Unweighted_Approved_Limit_Amount AS CARM_Unweighted_Approved_Limit_Amount,
- CARM_F_FAC.Parent_Facility_1 AS CARM_Parent_Facility_ID,
- CARM_F_FAC.advised_indicator AS CARM_Advised_Indicator,
- CARM_F_FAC.GBCDU_Site_Code AS CARM_GBCDU_Site_Code,
- CARM_F_FAC.Unconditionally_Cancellable_Indicator_Fallback AS CARM_Unconditionally_Cancellable_Indicator,
- CARM_F_FAC.Next_Review_Date AS CARM_Next_Review_Date,
- CARM_F_FAC.Facility_Type_Code AS CARM_Facility_Type_Code_Local,
- CARM_F_FAC.Facility_Type_Code_Group AS CARM_Facility_Type_Code_Group,
- CARM_F_FAC.Facility_CCY_Code_Group AS CARM_Facility_CCY_Code_Group,
- CARM_F_FAC.Forbearance_Indicator AS CARM_Forbearance_Indicator,
- CARM_F_FAC.Organisational_Unit AS CARM_Organisational_Unit,
- CARM_F_FAC.Facility_CCY_Code_Group AS CARM_Limit_CCY,
- CARM_F_FAC.Facility_Expiration_Date AS CARM_Facility_Expiry_Date,
- CARM_F_FAC.Site_Saracen_ID AS CARM_Site_Saracen_ID,
- "CREDIT_FACILITY" AS SOURCE,
- FOTC_UDF_TO_DATE(FAC_COMMON.reporting_date, 'YYYY-MM-DD') AS Reporting_Date,
- "[$sys_country_code]" AS Sys_Country_Code,
- "[$group_sys_id]" AS Group_System_ID,
- "[$batch_run_type]" AS Batch_Run_Type,
- FACILITY_BESPOKE_REPAIR.SL_Grade_Description AS SL_Grade_Description, --FACILITY_BESPOKE_REPAIR.Facility_Type AS Facility_Type,
- facility_uses AS Facility_Type, --FINOTC-37442 --V0.59
- --FACILITY_BESPOKE_REPAIR.Facility_Limit_Lcl_Rep_Ccy AS Facility_Limit_Lcl_Rep_Ccy,
- advised_credit_limit_amount_in_transaction_currency AS Facility_Limit_Lcl_Rep_Ccy, --FINOTC-37442 --V0.59
- FACILITY_BESPOKE_REPAIR.CRE_Type_Identifier AS CRE_Type_Identifier,
- FAC_COMMON.Adjustment_type AS Adjustment_type, --FINOTC-10330
- CARM_F_FAC.Arrears_Interest_Fees_Penalty_Payment_Capitalisation_Date,
- CARM_F_FAC.Refinancing_or_New_Credit_Facilities_Date,
- CARM_F_FAC.Interest_Only_Conversion_Date,
- CARM_F_FAC.Reduced_Payments_Date,
- CARM_F_FAC.Rescheduled_Payments_Date,
- CARM_F_FAC.Conversion_of_Currency_Date,
- CARM_F_FAC.Grace_Period_or_Payment_Moratorium_Date,
- CARM_F_FAC.Sales_by_Agreement_Date,
- CARM_F_FAC.Debt_Consolidation_Date,
- CARM_F_FAC.Debt_for_Equity_Swaps_Date,
- CARM_F_FAC.Reduction_In_Margin_Date,
- CARM_F_FAC.Principle_Payment_Forgiveness_Date,
- CARM_F_FAC.Interest_Fees_Penalty_Date,
- CARM_F_FAC.Repayment_Profile_Date,
- CARM_F_FAC.Other_Payment_Date,
- CARM_F_FAC.Covenaint_Waiver_Date,
- CARM_F_FAC.Restructuring_of_Collaterals_Date,
- CARM_F_FAC.Other_Non_Payment_Date,
- CARM_F_FAC.CARM_L_Credit_Proposal_Serial_Number,
- CARM_F_FAC.CARM_L_Forebearance_Flag,
- CARM_F_FAC.CARM_Date_of_Forborne,
- CARM_F_FAC.CARM_Date_of_First_Forborne,
- CARM_F_FAC.CARM_Number_of_Forbearance_Measures, --FINOTC-10330 end
- --FINOTC-54280:Uplift for V0.65 Started here
- CARM_F_FAC.Local_Overridden_Loss_Given_Default_Override_Category_Code AS Local_CARM_Overridden_Loss_Given_Default_Override_Category_Code,
- CARM_F_FAC.Local_Overridden_Downturn_Loss_Given_Default_Percentage AS Local_CARM_Overridden_Downturn_Loss_Given_Default_Percentage,
- CARM_F_FAC.Local_Downturn_Loss_Given_Default_Percentage AS Local_CARM_Downturn_Loss_Given_Default_Percentage,
- CARM_F_FAC.Local_Overridden_Downturn_Loss_Given_Default_Percentage AS Local_CARM_Overridden_Loss_Given_Default_Percentage,
- CARM_F_FAC.Local_Proposed_Loss_Given_Default_Percentage AS Local_CARM_Proposed_Loss_Given_Default_Percentage,
- CARM_F_FAC.Local_DLGD AS Local_CARM_DLGD,
- CARM_F_FAC.Local_ELGD AS Local_CARM_ELGD,
- CARM_F_FAC.Local_LGD AS Local_CARM_LGD,
- CARM_F_FAC.Local_LGD_Indicator AS Local_CARM_LGD_Indicator, --FINOTC-111521
- WDR_ADC_REPAIR.ADC_Indicator AS ADC_Indicator, --FINOTC-60737
- WDR_ADC_REPAIR.Level_of_ADC_Pre_Sale_Pre_Lease_Contract AS Level_of_ADC_Pre_Sale_Or_Pre_Lease_Contracts_Value, --FINOTC-60737
- WDR_ADC_REPAIR.Level_of_ADC_Equity_at_Risk AS Level_of_ADC_Equity_At_Risk_Value --FINOTC-60737
- --Ended here
- ,
- WDR_ADC_REPAIR.Real_Estate_Project_Indicator AS Real_Estate_Project_Indicator ,
- WDR_ADC_REPAIR.High_Rise_Indicator AS High_Rise_Indicator ,
- WDR_ADC_REPAIR.Construction_Project_Indicator AS Construction_Project_Indicator ,
- WDR_ADC_REPAIR.Land_Acquisition_Indicator AS Land_Acquisition_Indicator ,
- WDR_ADC_REPAIR.Purpose_Built_Rent_Construction_Indicator AS Purpose_Built_Rent_Construction_Indicator ,
- WDR_ADC_REPAIR.ADC_Social_Housing_Indicator AS ADC_Social_Housing_Indicator --FINOTC-111521
- -- ,CASE WHEN unconditionally_cancellable_indicator_Pre_Override IS NOT NULL
- -- THEN "N"
- -- WHEN CARM_F_FAC.Unconditionally_Cancellable_Indicator_Fallback_Flag IS NOT NULL
- -- THEN CARM_F_FAC.Unconditionally_Cancellable_Indicator_Fallback_Flag
- -- ELSE "Y"
- -- END AS Unconditionally_Cancellable_Indicator_Fallback_Flag			  --FINOTC-171149
- ,
- CARM_F_FAC.Facility_Grade --FINOTC-186054
- ,
- SAFE_CAST(CARM_F_FAC.Facility_Identifier AS STRING) AS Facility_Identifier --FINOTC-292309
- ,
- SAFE_CAST(CARM_F_FAC.Syndicated_Facilities_Type_Code AS STRING) AS Syndicated_Facilities_Type_Code --FINOTC-292309
- ,
- SAFE_CAST(CARM_F_FAC.Facility_Riskiness AS NUMERIC) AS Facility_Riskiness --FINOTC-292309
- ,
- Seniority_Code --FINOTC-300631
+ESR_GRP_GLMFACIL AS (
+  SELECT
+    TRIM(Facility_Class) AS Facility_Class,
+    TRIM(Facility_code) AS Local_Site_Code,
+    SAFE_CAST('[$reporting_date]' AS DATE) AS Reporting_Date  --FINOTC-15994
+  FROM
+    [$target_dataset].ESR_GRP_GLMFACIL ),
+  RWA_RD_REGULATOR_SPECIFIC_VALUES AS (
+  SELECT
+    Regulator AS Regulator,
+    Parameter_Name AS Parameter_Name,
+    Parameter_Value,
+	Parameter_Value_String
+  FROM
+    [$target_dataset].FOTC_RD_REGULATOR_SPECIFIC_VALUES ),
+  RWA_RD_SITE_ATTRIBUTES AS (
+  SELECT
+    Site_Id AS Site_Id,
+    Parameter AS Parameter,
+    Value AS Value,
+    Regulator AS Regulator
+  FROM
+    [$target_dataset].FOTC_RD_SITE_ATTRIBUTES ),
 
-   FROM [$target_dataset].FOTC_COMMON_FACILITY_INTRA FAC_COMMON
-   LEFT OUTER JOIN FOTC_CARM_FACILITY_INTRA CARM_F_FAC ON CARM_F_FAC.Facility_Identifier = CASE
-                                                                                               WHEN "[$batch_run_type]" = "B2RWA"
-                                                                                                    AND FAC_COMMON.HNAH_ENTITY_FLAG = "Y" -- FINOTC-263681
- THEN FAC_COMMON.local_credit_facility_identifier
-                                                                                               ELSE FAC_COMMON.credit_facility_arrangement_local_number
-                                                                                           END
-   AND CARM_F_FAC.Site_Saracen_ID = FAC_COMMON.Grca_entity_identifier
-   LEFT OUTER JOIN [$target_dataset].HNAH_RWA_FACILITY_BESPOKE_REPAIR FACILITY_BESPOKE_REPAIR ON FACILITY_BESPOKE_REPAIR.local_credit_facility_identifier = FAC_COMMON.local_credit_facility_identifier
-   AND FAC_COMMON.credit_facility_arrangement_local_number = FACILITY_BESPOKE_REPAIR.credit_facility_arrangement_local_number
-   AND "[$batch_run_type]" = "B2RWA"
-   AND FAC_COMMON.HNAH_Entity_Flag = "Y" --FINOTC_213409
+	FOTC_CARM_FACILITY_INTRA AS
+	(
+	Select Distinct *  EXCEPT (__UUID)
+	FROM [$target_dataset].FOTC_CARM_FACILITY_INTRA
+	),
 
-   LEFT OUTER JOIN [$target_dataset].WDR_ADC_REPAIR WDR_ADC_REPAIR --added join as per FINOTC-111521
- ON Facility_ID = FAC_COMMON.local_credit_facility_identifier --AND  System_ID     =   FAC_COMMON.credit_facility_system_identifier  --FINOTC-223702
-AND safe_cast(Saracen_ID AS STRING) = FAC_COMMON.grca_entity_identifier),
-     CDM_CREDIT_REPAIR_00110 AS
-  (SELECT CDM_CREDIT_FACILITY_REPAIR.*,
-          CASE
-              WHEN (local_credit_facility_identifier like '%ADJ_RECON%'
-                    OR local_credit_facility_identifier like '%ADJ_RECON%') THEN 'R'
-              WHEN (local_credit_facility_identifier like '%OFFSYS% '
-                    OR local_credit_facility_identifier like '%OFFSYS%') THEN 'O'
-              WHEN Adjustment_type like '%Manual%'
-                   AND Adjustment_type like '%Auto%' THEN 'B'
-              WHEN Adjustment_type like '%Manual%' THEN 'M'
-              WHEN Adjustment_type like '%Auto%' THEN 'A'
-              WHEN Adjustment_type IS NULL THEN 'N'
-          END AS Adjustment_Flag,
-          CDM_CREDIT_FACILITY_REPAIR.CARM_Next_Review_Date AS CARM_Next_Review_Date_Pre_Override,
-          CASE
-              WHEN RWA_Run_Type IN ("ADJ") THEN FOTC_UDF_TO_DATE(FACILITY_OVERRIDE_1.Override_Value, 'MM/DD/YYYY')
-          END AS CARM_Next_Review_Date_Override,
-          CDM_CREDIT_FACILITY_REPAIR.CARM_Facility_Expiry_Date AS CARM_Facility_Expiry_Date_Pre_Override,
-          CASE
-              WHEN RWA_Run_Type IN ("ADJ") THEN FOTC_UDF_TO_DATE(FACILITY_OVERRIDE_2.Override_Value, 'MM/DD/YYYY')
-          END AS CARM_Facility_Expiry_Date_Override
-   FROM CDM_CREDIT_REPAIR_00100 CDM_CREDIT_FACILITY_REPAIR
-   LEFT OUTER JOIN FOTC_RD_OVERRIDE_FAC_Adjustable FACILITY_OVERRIDE_1 ON FACILITY_OVERRIDE_1.SITE_ID = CDM_CREDIT_FACILITY_REPAIR.grca_Entity_Identifier ----FINOTC-14155
 
-   AND FACILITY_OVERRIDE_1.Facility_ID = CDM_CREDIT_FACILITY_REPAIR.local_credit_facility_identifier
-   AND FACILITY_OVERRIDE_1.Override_Type = "CARM_NEXT_REVIEW_DATE"
-   LEFT OUTER JOIN FOTC_RD_OVERRIDE_FAC_Adjustable FACILITY_OVERRIDE_2 ON FACILITY_OVERRIDE_2.SITE_ID = CDM_CREDIT_FACILITY_REPAIR.grca_Entity_Identifier ----FINOTC-14155
+	FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP AS
+	(
+		SELECT
+		Category ,
+		Sub_Category ,
+		Legal_Entity,
+		System_ID,
+		Local_Code,
+		Group_Code,
+		Comments
+		FROM [$target_dataset].FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP),
 
-   AND FACILITY_OVERRIDE_2.Facility_ID = CDM_CREDIT_FACILITY_REPAIR.local_credit_facility_identifier
-   AND FACILITY_OVERRIDE_2.Override_Type = "CARM_FACILITY_EXPIRY_DATE"),
-     CDM_CREDIT_REPAIR_00120 AS
-  (SELECT CDM_CREDIT_FACILITY_REPAIR.* EXCEPT(CARM_Next_Review_Date, CARM_Facility_Expiry_Date),
-                                       CASE
-                                           WHEN CARM_Next_Review_Date_Override IS NOT NULL THEN "Facility"
-                                       END AS CARM_Next_Review_Date_Override_Type_Indicator,
-                                       CASE
-                                           WHEN CARM_Next_Review_Date_Override IS NOT NULL THEN CARM_Next_Review_Date_Override
-                                           ELSE CARM_Next_Review_Date_Pre_Override
-                                       END AS CARM_Next_Review_Date,
-                                       CASE
-                                           WHEN CARM_Facility_Expiry_Date_Override IS NOT NULL THEN "Facility"
-                                       END AS CARM_Facility_Expiry_Date_Override_Type_Indicator,
-                                       CASE
-                                           WHEN CARM_Facility_Expiry_Date_Override IS NOT NULL THEN CARM_Facility_Expiry_Date_Override
-                                           ELSE CARM_Facility_Expiry_Date_Pre_Override
-                                       END AS CARM_Facility_Expiry_Date
-   FROM CDM_CREDIT_REPAIR_00110 CDM_CREDIT_FACILITY_REPAIR),
-     CDM_CREDIT_REPAIR_00150 AS
-  (SELECT CDM_REPAIR.*,
-          CASE
-              WHEN Batch_Run_Type = "B2RWA" THEN CDM_REPAIR.booking_entity_identifier_1
-              ELSE NULL
-          END AS GBCDU_Site_Code_SDI,
-          CASE
-              WHEN credit_facility_limit_next_review_date NOT IN ("9999-12-31")
-                   AND credit_facility_limit_next_review_date IS NOT NULL
-                   AND credit_facility_limit_next_review_date NOT IN ("1901-01-01")
-                   AND credit_facility_limit_next_review_date >= Reporting_Date THEN "Y"
-              ELSE "N"
-          END AS credit_facility_limit_next_review_date_Valid_Flag,
-          CASE
-              WHEN CARM_Next_Review_Date NOT IN ("9999-12-31")
-                   AND CARM_Next_Review_Date IS NOT NULL
-                   AND CARM_Next_Review_Date NOT IN ("1901-01-01")
-                   AND CARM_Next_Review_Date >= Reporting_Date THEN "Y"
-              ELSE "N"
-          END AS CARM_Next_Review_Date_Valid_Flag,
-          CASE
-              WHEN Batch_Run_Type NOT IN ("FOTC") THEN NULL
-              ELSE CDM_REPAIR.credit_officer_identifier_Interim
-          END AS credit_officer_identifier,
-   FROM CDM_CREDIT_REPAIR_00120 CDM_REPAIR),
-     CDM_CREDIT_REPAIR_00200 AS
-  (SELECT CDM_REPAIR.* EXCEPT(booking_entity_identifier_1),
-                       CASE
-                           WHEN credit_facility_limit_next_review_date_valid_Flag = "Y" THEN credit_facility_limit_next_review_date
-                           WHEN CARM_Next_Review_Date_Valid_Flag = "Y" THEN CARM_Next_Review_Date
-                       END AS Next_Review_Date,
-                       CASE
-                           WHEN credit_facility_limit_next_review_date_valid_Flag = "Y" THEN "SDI_Based_credit_facility_limit_next_review_date"
-                           WHEN CARM_Next_Review_Date_Valid_Flag = "Y" THEN "CARM_Based_Next_Review_Date"
-                       END AS Next_Review_Date_Source,
-                       CASE
-                           WHEN Batch_Run_Type = "B2RWA" THEN LOCAL_TO_GROUP_FACILITY_MAP_ESR.Group_Code
-                           WHEN Batch_Run_Type = "FOTC" THEN LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Group_Code
-                       END AS Facility_Type_Code,
-                       CASE
-                           WHEN Batch_Run_Type NOT IN ("FOTC") THEN CASE
-                                                                        WHEN CDM_REPAIR.credit_officer_identifier_Interim IS NOT NULL THEN CDM_REPAIR.credit_officer_identifier_Interim
-                                                                        ELSE "N"
-                                                                    END
-                           ELSE "N"
-                       END AS Aggregated_MIF_Flag,
-                       ESR_GLMFACIL.Facility_Class AS Facility_Classification,
-                       COALESCE(SAFE_CAST(credit_facility_first_drawdown_date AS DATE), SAFE_CAST(CARM_Application_Approval_Date AS DATE)) AS Facility_Start_Date,
-                       COALESCE(SAFE_CAST(committed_indicator AS STRING), SAFE_CAST(CARM_Commited_Indicator AS STRING)) AS Facility_Committed_Indicator,
-                       COALESCE(SAFE_CAST(local_credit_facility_type_code AS STRING), SAFE_CAST(CARM_Facility_Type_Code_Local AS STRING)) AS Facility_Type_Code_Local,
-                       CASE
-                           WHEN SITE_ATTRIBUTES.Parameter IS NOT NULL THEN CASE
-                                                                               WHEN SITE_ATTRIBUTES.VALUE IS NOT NULL THEN SITE_ATTRIBUTES.VALUE
-                                                                               ELSE "N"
-                                                                           END
-                           ELSE "NA"
-                       END AS Site_Eligible_For_UK_Ret_SME_Reclass_Flag,
-                       CASE
-                           WHEN "[$run_group]" = "HBUK" THEN SITE_ATTRIBUTES_PCIF_HBUK.Value
-                           ELSE SITE_ATTRIBUTES_PCIF.Value
-                       END AS PCIF_Identifier, --FINOTC-276185
-  SAFE_CAST(REGULATOR_SPECIFIC.Parameter_Value AS FLOAT64) AS UK_Ret_SME_Limit_Threshold_GBP,
-  CASE
-      WHEN advised_indicator IN ("Y",
-                                 "N",
-                                 "1",
-                                 "0")--FINOTC-61001 --FINOTC-135812
+  CDM_CREDIT_REPAIR_00100 AS (
+  SELECT
+		FAC_COMMON.local_credit_facility_identifier,
+		CASE WHEN "[$batch_run_type]" = "B2RWA" THEN NULL
+				ELSE FAC_COMMON.booking_entity_identifier  ----FINOTC-14155
+			END AS booking_entity_identifier,
+		FAC_COMMON.grca_Entity_Identifier, ---Added New column
+		FAC_COMMON.credit_facility_system_identifier,
+		FAC_COMMON.Unique_Facility_ID,
+		FAC_COMMON.Unique_CARM_Facility_ID,
+		FAC_COMMON.Unique_Governing_Facility_ID,
+		FAC_COMMON.Unique_IP_ID,
+		FAC_COMMON.Entity_Saracen_Code_1,
+		FAC_COMMON.booking_entity_identifier AS booking_entity_identifier_1,
+		FAC_COMMON.governing_credit_facility_identifier,
+		FAC_COMMON.primary_obligor_party_system_identifier,
+		FAC_COMMON.primary_obligor_party_identifier,
+		FAC_COMMON.primary_obligor_party_identifier_type_code,
+		FAC_COMMON.secondary_obligor_party_identifier,
+		FAC_COMMON.local_credit_facility_type_code,
+		FAC_COMMON.banking_or_trading_book_code,
+		FAC_COMMON.committed_indicator,
+		FAC_COMMON.unconditionally_cancellable_indicator,
+		FAC_COMMON.credit_facility_revolving_type_indicator,
+		FAC_COMMON.credit_facility_offer_date,
+		FAC_COMMON.facility_offer_acceptance_date,
+		FAC_COMMON.credit_facility_first_drawdown_date,
+		FAC_COMMON.credit_facility_final_drawdown_date, ---Corrected spelling
+		FAC_COMMON.facility_expiry_date,
+		FAC_COMMON.advised_credit_limit_amount_in_transaction_currency,
+		FAC_COMMON.advised_credit_limit_amount_transaction_currency_code,
+		FAC_COMMON.undrawn_balance_in_transaction_currency,
+		FAC_COMMON.undrawn_balance_transaction_currency_code,
+		FAC_COMMON.undrawn_balance_in_functional_currency,
+		FAC_COMMON.undrawn_balance_functional_currency_code,
+		FAC_COMMON.cost_centre_number,
+		FAC_COMMON.local_gl_reconciliation_key,
+		FAC_COMMON.undrawn_commitment_grca_reconciliation_key,
+		FAC_COMMON.credit_officer_identifier as credit_officer_identifier_Interim,
+		FAC_COMMON.local_relationship_manager_identifier,
+		FAC_COMMON.credit_facility_limit_next_review_date,
+		FAC_COMMON.standby_facility_indicator,
+		FAC_COMMON.facility_notice_period_days_count,
+		FACILITY_BESPOKE_REPAIR.Secured_Indicator AS RWA_Secured_Indicator,                        --FINOTC-31583
+		FACILITY_BESPOKE_REPAIR.End_of_period_balance_transaction_currency,                        --FINOTC-31583
+		FACILITY_BESPOKE_REPAIR.Master_Category_A_Exposure_Limit,                                  --FINOTC-31583
+		FAC_COMMON.proportion_secured_percentage,
+		FAC_COMMON.liquidity_or_credit_facility_code,
+		FAC_COMMON.availability_expiration_date,
+		FAC_COMMON.recognition_or_de_recognition_date,
+		FAC_COMMON.advised_indicator,
+		FAC_COMMON.unweighted_utilisation_amount_in_transaction_currency,
+		FAC_COMMON.unweighted_utilisation_amount_transaction_currency_code,
+		FAC_COMMON.credit_facility_arrangement_source_system_code,
+		FAC_COMMON.credit_facility_arrangement_local_number,
+		FAC_COMMON.credit_facility_arrangement_suffix_number,
+		FAC_COMMON.undrawn_balance_nominal_account_number,
+		FAC_COMMON.undrawn_balance_source_chartfield_code,
+		FAC_COMMON.detailed_facility_code,
+		FAC_COMMON.credit_facility_or_product_chartfield_code,
+		FAC_COMMON.affiliate_chartfield_code,
+		FAC_COMMON.summary_customer_type_chartfield_code,
+		FAC_COMMON.detailed_customer_type_chartfield_code,
+		FAC_COMMON.recurring_fee_or_interest_percentage,
+		FAC_COMMON.non_usage_fee_amount_in_transaction_currency,
+		FAC_COMMON.non_usage_fee_amount_transaction_currency_code,
+		FAC_COMMON.up_front_fee_amount_in_transaction_currency,
+		FAC_COMMON.up_front_fee_amount_transaction_currency_code,
+
+		--- New attribute added due to override
+		RWA_Run_Type,
+		committed_indicator_Pre_Override,
+		Committed_Indicator_Override,
+		unconditionally_cancellable_indicator_Pre_Override,
+		Unconditionally_Cancellable_Indicator_Override,
+		facility_expiry_date_Pre_Override,
+		facility_expiry_date_Override,
+		undrawn_balance_in_transaction_currency_Pre_Override,
+		undrawn_balance_in_transaction_currency_Override,
+		undrawn_balance_transaction_currency_code_Pre_Override,
+		undrawn_balance_transaction_currency_code_Override,
+		undrawn_commitment_grca_reconciliation_key_Pre_Override,
+		Undrawn_Commitment_Grca_Reconciliation_Key_Override,
+		credit_facility_limit_next_review_date_Pre_Override,
+		credit_facility_limit_next_review_date_Override,
+		Committed_Indicator_Override_Type_Indicator,
+		Unconditionally_Cancellable_Indicator_Override_Type_Indicator,
+		facility_expiry_date_Override_Type_Indicator,
+		undrawn_balance_in_transaction_currency_Override_Type_Indicator,
+		undrawn_balance_transaction_currency_code_Override_Type_Indicator,
+		Undrawn_Commitment_Grca_Reconciliation_Key_Override_Type_Indicator,
+		credit_facility_limit_next_review_date_Override_Type_Indicator,
+
+
+		CARM_F_FAC.Involved_Party_Alternative_ID_Type AS CARM_Involved_Party_Alternative_ID_Type,
+		CARM_F_FAC.Facility_Customer_ID AS CARM_Facility_Customer_ID,
+		CARM_F_FAC.Group_System_ID AS CARM_Group_system_ID,
+		CARM_F_FAC.Credit_Proposal_Serial_Number AS CARM_Credit_Proposal_Serial_Number,
+		CARM_F_FAC.Facility_Currency_Code AS CARM_Facility_Currency_Code,
+		CARM_F_FAC.Relationship_Identifier AS CARM_Relationship_Identifier,
+		CARM_F_FAC.Ultimate_Parent_Facility_Flag AS CARM_Ultimate_Parent_Facility_Flag,
+		CARM_F_FAC.DLGD AS CARM_DLGD,
+		CARM_F_FAC.ELGD AS CARM_ELGD,
+		CARM_F_FAC.LGD AS CARM_LGD,
+		CARM_F_FAC.LGD_Indicator AS CARM_LGD_Indicator,
+		CARM_F_FAC.availability_expiration_date AS CARM_Availability_Expiration_Date,
+		CARM_F_FAC.Application_Approval_Date AS CARM_Application_Approval_Date,
+		CARM_F_FAC.Committed_Indicator_Fallback AS CARM_Commited_Indicator,
+		CARM_F_FAC.Regulatory_Specialised_Lending_Type AS CARM_Regulatory_Specialised_Lending_Type,
+		CARM_F_FAC.Supervisory_Category AS CARM_Supervisory_Category,
+		CARM_F_FAC.Proposed_Supervisory_Category AS CARM_Proposed_Supervisory_Category,
+		CARM_F_FAC.Overridden_Supervisory_Category AS CARM_Overridden_Supervisory_Category,
+		CARM_F_FAC.Proposed_Regulatory_Specialised_Lending_PD AS CARM_Proposed_Regulatory_Specialised_Lending_PD,
+		CARM_F_FAC.Overridden_Regulatory_Specialised_Lending_PD AS CARM_Overridden_Regulatory_Specialised_Lending_PD,
+		CARM_F_FAC.Regulatory_Specialised_Lending_Scorecard AS CARM_Regulatory_Specialised_Lending_Scorecard,
+		CARM_F_FAC.Facility_Scorecard AS CARM_Facility_Scorecard,
+		CARM_F_FAC.Overridden_Loss_Given_Default_Override_Category_Code AS CARM_Overridden_Loss_Given_Default_Override_Category_Code,
+		CARM_F_FAC.Overridden_Downturn_Loss_Given_Default_Percentage AS CARM_Overridden_Downturn_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Downturn_Loss_Given_Default_Percentage AS CARM_Downturn_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Overridden_Downturn_Loss_Given_Default_Percentage AS CARM_Overridden_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Proposed_Loss_Given_Default_Percentage AS CARM_Proposed_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Unweighted_Approved_Limit_Amount AS CARM_Unweighted_Approved_Limit_Amount,
+		CARM_F_FAC.Parent_Facility_1 AS CARM_Parent_Facility_ID,
+		CARM_F_FAC.advised_indicator AS CARM_Advised_Indicator,
+		CARM_F_FAC.GBCDU_Site_Code AS CARM_GBCDU_Site_Code,
+		CARM_F_FAC.Unconditionally_Cancellable_Indicator_Fallback AS CARM_Unconditionally_Cancellable_Indicator,
+		CARM_F_FAC.Next_Review_Date AS CARM_Next_Review_Date,
+		CARM_F_FAC.Facility_Type_Code AS CARM_Facility_Type_Code_Local,
+		CARM_F_FAC.Facility_Type_Code_Group AS CARM_Facility_Type_Code_Group,
+		CARM_F_FAC.Facility_CCY_Code_Group AS CARM_Facility_CCY_Code_Group,
+		CARM_F_FAC.Forbearance_Indicator AS CARM_Forbearance_Indicator,
+		CARM_F_FAC.Organisational_Unit AS CARM_Organisational_Unit,
+		CARM_F_FAC.Facility_CCY_Code_Group AS CARM_Limit_CCY,
+		CARM_F_FAC.Facility_Expiration_Date AS CARM_Facility_Expiry_Date,
+		CARM_F_FAC.Site_Saracen_ID AS CARM_Site_Saracen_ID,
+		"CREDIT_FACILITY" AS Source,
+		FOTC_UDF_TO_DATE(FAC_COMMON.reporting_date,'YYYY-MM-DD') AS Reporting_Date,
+		"[$sys_country_code]" AS Sys_Country_Code,
+		"[$group_sys_id]" AS Group_System_ID,
+		"[$batch_run_type]" AS Batch_Run_Type,
+		FACILITY_BESPOKE_REPAIR.SL_Grade_Description AS SL_Grade_Description,
+		--FACILITY_BESPOKE_REPAIR.Facility_Type AS Facility_Type,
+		facility_uses AS Facility_Type, --FINOTC-37442 --V0.59
+		--FACILITY_BESPOKE_REPAIR.Facility_Limit_Lcl_Rep_Ccy AS Facility_Limit_Lcl_Rep_Ccy,
+		advised_credit_limit_amount_in_transaction_currency AS Facility_Limit_Lcl_Rep_Ccy,  --FINOTC-37442 --V0.59
+		FACILITY_BESPOKE_REPAIR.CRE_Type_Identifier AS CRE_Type_Identifier,
+		FAC_COMMON.Adjustment_type AS Adjustment_type,
+		--FINOTC-10330
+		CARM_F_FAC.Arrears_Interest_Fees_Penalty_Payment_Capitalisation_Date,
+		CARM_F_FAC.Refinancing_or_New_Credit_Facilities_Date,
+		CARM_F_FAC.Interest_Only_Conversion_Date,
+		CARM_F_FAC.Reduced_Payments_Date,
+		CARM_F_FAC.Rescheduled_Payments_Date,
+		CARM_F_FAC.Conversion_of_Currency_Date,
+		CARM_F_FAC.Grace_Period_or_Payment_Moratorium_Date,
+		CARM_F_FAC.Sales_by_Agreement_Date,
+		CARM_F_FAC.Debt_Consolidation_Date,
+		CARM_F_FAC.Debt_for_Equity_Swaps_Date,
+		CARM_F_FAC.Reduction_In_Margin_Date,
+		CARM_F_FAC.Principle_Payment_Forgiveness_Date,
+		CARM_F_FAC.Interest_Fees_Penalty_Date,
+		CARM_F_FAC.Repayment_Profile_Date,
+		CARM_F_FAC.Other_Payment_Date,
+		CARM_F_FAC.Covenaint_Waiver_Date,
+		CARM_F_FAC.Restructuring_of_Collaterals_Date,
+		CARM_F_FAC.Other_Non_Payment_Date,
+		CARM_F_FAC.CARM_L_Credit_Proposal_Serial_Number,
+		CARM_F_FAC.CARM_L_Forebearance_Flag,
+		CARM_F_FAC.CARM_Date_of_Forborne,
+		CARM_F_FAC.CARM_Date_of_First_Forborne,
+		CARM_F_FAC.CARM_Number_of_Forbearance_Measures,
+		--FINOTC-10330 end
+		--FINOTC-54280:Uplift for V0.65 Started here
+		CARM_F_FAC.Local_Overridden_Loss_Given_Default_Override_Category_Code AS Local_CARM_Overridden_Loss_Given_Default_Override_Category_Code,
+		CARM_F_FAC.Local_Overridden_Downturn_Loss_Given_Default_Percentage AS Local_CARM_Overridden_Downturn_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Local_Downturn_Loss_Given_Default_Percentage AS Local_CARM_Downturn_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Local_Overridden_Downturn_Loss_Given_Default_Percentage AS Local_CARM_Overridden_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Local_Proposed_Loss_Given_Default_Percentage AS Local_CARM_Proposed_Loss_Given_Default_Percentage,
+		CARM_F_FAC.Local_DLGD AS Local_CARM_DLGD,
+		CARM_F_FAC.Local_ELGD AS Local_CARM_ELGD,
+		CARM_F_FAC.Local_LGD AS Local_CARM_LGD,
+		CARM_F_FAC.Local_LGD_Indicator AS Local_CARM_LGD_Indicator,
+		--FINOTC-111521
+		WDR_ADC_REPAIR.ADC_Indicator AS ADC_Indicator,   --FINOTC-60737
+		WDR_ADC_REPAIR.Level_of_ADC_Pre_Sale_Pre_Lease_Contract AS Level_of_ADC_Pre_Sale_Or_Pre_Lease_Contracts_Value,  --FINOTC-60737
+		WDR_ADC_REPAIR.Level_of_ADC_Equity_at_Risk AS Level_of_ADC_Equity_At_Risk_Value --FINOTC-60737
+		--Ended here
+		,WDR_ADC_REPAIR.Real_Estate_Project_Indicator AS Real_Estate_Project_Indicator
+		,WDR_ADC_REPAIR.High_Rise_Indicator AS High_Rise_Indicator
+		,WDR_ADC_REPAIR.Construction_Project_Indicator AS Construction_Project_Indicator
+		,WDR_ADC_REPAIR.Land_Acquisition_Indicator AS Land_Acquisition_Indicator
+		,WDR_ADC_REPAIR.Purpose_Built_Rent_Construction_Indicator AS Purpose_Built_Rent_Construction_Indicator
+		,WDR_ADC_REPAIR.ADC_Social_Housing_Indicator AS ADC_Social_Housing_Indicator
+		--FINOTC-111521
+		-- ,CASE WHEN unconditionally_cancellable_indicator_Pre_Override IS NOT NULL
+		      -- THEN "N"
+			  -- WHEN CARM_F_FAC.Unconditionally_Cancellable_Indicator_Fallback_Flag IS NOT NULL
+			  -- THEN CARM_F_FAC.Unconditionally_Cancellable_Indicator_Fallback_Flag
+			  -- ELSE "Y"
+         -- END AS Unconditionally_Cancellable_Indicator_Fallback_Flag			  --FINOTC-171149
+        ,CARM_F_FAC.Facility_Grade                                                 --FINOTC-186054
+		,SAFE_CAST(CARM_F_FAC.Facility_Identifier AS STRING) AS Facility_Identifier									--FINOTC-292309
+		,SAFE_CAST(CARM_F_FAC.Syndicated_Facilities_Type_Code AS STRING) AS Syndicated_Facilities_Type_Code			--FINOTC-292309
+		,SAFE_CAST(CARM_F_FAC.Facility_Riskiness AS NUMERIC) AS Facility_Riskiness									--FINOTC-292309
+		,Seniority_Code --FINOTC-300631
+  FROM
+    [$target_dataset].FOTC_COMMON_FACILITY_INTRA FAC_COMMON
+  LEFT OUTER JOIN
+    FOTC_CARM_FACILITY_INTRA CARM_F_FAC
+  ON
+	CARM_F_FAC.Facility_Identifier  = CASE WHEN "[$batch_run_type]" = "B2RWA" and FAC_COMMON.HNAH_ENTITY_FLAG = "Y"              -- FINOTC-263681
+                                               THEN FAC_COMMON.local_credit_facility_identifier
+                                           ELSE FAC_COMMON.credit_facility_arrangement_local_number END
+    AND CARM_F_FAC.Site_Saracen_ID  =FAC_COMMON.Grca_entity_identifier
+  LEFT OUTER JOIN
+    [$target_dataset].HNAH_RWA_FACILITY_BESPOKE_REPAIR FACILITY_BESPOKE_REPAIR
+  ON
+	FACILITY_BESPOKE_REPAIR.local_credit_facility_identifier =FAC_COMMON.local_credit_facility_identifier
+    AND FAC_COMMON.credit_facility_arrangement_local_number  =FACILITY_BESPOKE_REPAIR.credit_facility_arrangement_local_number
+	AND "[$batch_run_type]" = "B2RWA" and FAC_COMMON.HNAH_Entity_Flag = "Y" --FINOTC_213409
+
+LEFT OUTER JOIN
+		[$target_dataset].WDR_ADC_REPAIR WDR_ADC_REPAIR --added join as per FINOTC-111521
+		ON
+		Facility_ID   =  FAC_COMMON.local_credit_facility_identifier
+--AND  System_ID     =   FAC_COMMON.credit_facility_system_identifier  --FINOTC-223702
+AND    safe_cast(Saracen_ID As STRING)  =  FAC_COMMON.grca_entity_identifier
+	),
+
+	CDM_CREDIT_REPAIR_00110 AS
+	(
+		SELECT CDM_CREDIT_FACILITY_REPAIR.*,
+
+
+		CASE WHEN (local_credit_facility_identifier like '%ADJ_RECON%' or local_credit_facility_identifier like '%ADJ_RECON%')
+       then 'R'
+       WHEN (local_credit_facility_identifier like  '%OFFSYS% '  or local_credit_facility_identifier like  '%OFFSYS%' )
+        then 'O'
+       WHEN  Adjustment_type like '%Manual%' and Adjustment_type like '%Auto%'
+        then 'B'
+       WHEN Adjustment_type like '%Manual%'
+        then 'M'
+       WHEN Adjustment_type like '%Auto%'
+        then 'A'
+WHEN Adjustment_type is Null then  'N' END AS Adjustment_Flag,
+
+		CDM_CREDIT_FACILITY_REPAIR.CARM_Next_Review_Date AS CARM_Next_Review_Date_Pre_Override,
+
+		CASE
+		WHEN RWA_Run_Type IN ( "ADJ") THEN FOTC_UDF_TO_DATE(FACILITY_OVERRIDE_1.Override_Value ,'MM/DD/YYYY')
+		END AS CARM_Next_Review_Date_Override,
+
+		CDM_CREDIT_FACILITY_REPAIR.CARM_Facility_Expiry_Date AS CARM_Facility_Expiry_Date_Pre_Override,
+
+		CASE
+		WHEN RWA_Run_Type IN ( "ADJ") THEN FOTC_UDF_TO_DATE(FACILITY_OVERRIDE_2.Override_Value ,'MM/DD/YYYY')
+		END AS CARM_Facility_Expiry_Date_Override
+
+		FROM CDM_CREDIT_REPAIR_00100 CDM_CREDIT_FACILITY_REPAIR
+		LEFT OUTER JOIN FOTC_RD_OVERRIDE_FAC_Adjustable FACILITY_OVERRIDE_1
+		ON   FACILITY_OVERRIDE_1.SITE_ID  = CDM_CREDIT_FACILITY_REPAIR.grca_Entity_Identifier			----FINOTC-14155
+		AND FACILITY_OVERRIDE_1.Facility_ID  = CDM_CREDIT_FACILITY_REPAIR.local_credit_facility_identifier
+		AND FACILITY_OVERRIDE_1.Override_Type = "CARM_NEXT_REVIEW_DATE"
+		LEFT OUTER JOIN FOTC_RD_OVERRIDE_FAC_Adjustable FACILITY_OVERRIDE_2
+		ON   FACILITY_OVERRIDE_2.SITE_ID  = CDM_CREDIT_FACILITY_REPAIR.grca_Entity_Identifier		----FINOTC-14155
+		AND FACILITY_OVERRIDE_2.Facility_ID  = CDM_CREDIT_FACILITY_REPAIR.local_credit_facility_identifier
+		AND FACILITY_OVERRIDE_2.Override_Type = "CARM_FACILITY_EXPIRY_DATE"
+
+	),
+
+	CDM_CREDIT_REPAIR_00120 AS
+	(
+		SELECT CDM_CREDIT_FACILITY_REPAIR.* EXCEPT(CARM_Next_Review_Date,CARM_Facility_Expiry_Date),
+
+		CASE WHEN CARM_Next_Review_Date_Override IS NOT NULL THEN
+             "Facility"
+		END AS CARM_Next_Review_Date_Override_Type_Indicator,
+
+		CASE WHEN  CARM_Next_Review_Date_Override IS NOT NULL
+			THEN CARM_Next_Review_Date_Override
+			ELSE CARM_Next_Review_Date_Pre_Override
+		END AS  CARM_Next_Review_Date,
+
+		CASE WHEN CARM_Facility_Expiry_Date_Override IS NOT NULL THEN
+             "Facility"
+		END AS CARM_Facility_Expiry_Date_Override_Type_Indicator,
+
+		CASE WHEN  CARM_Facility_Expiry_Date_Override IS NOT NULL
+			THEN CARM_Facility_Expiry_Date_Override
+			ELSE CARM_Facility_Expiry_Date_Pre_Override
+		END AS  CARM_Facility_Expiry_Date
+
+		FROM CDM_CREDIT_REPAIR_00110 CDM_CREDIT_FACILITY_REPAIR
+	),
+
+	CDM_CREDIT_REPAIR_00150 AS
+	(
+		SELECT CDM_REPAIR.*,
+
+
+			CASE WHEN Batch_Run_Type = "B2RWA" THEN  CDM_REPAIR.booking_entity_identifier_1
+				ELSE NULL
+			END AS GBCDU_Site_Code_SDI,
+
+			 CASE
+				WHEN credit_facility_limit_next_review_date NOT IN ( "9999-12-31")     and
+					credit_facility_limit_next_review_date IS NOT NULL                         and
+					credit_facility_limit_next_review_date  NOT IN ( "1901-01-01")   and
+					credit_facility_limit_next_review_date >= Reporting_Date
+					then   "Y"
+					else "N"
+				END AS credit_facility_limit_next_review_date_Valid_Flag,
+
+				 CASE
+					WHEN CARM_Next_Review_Date NOT IN ( "9999-12-31")     and
+					CARM_Next_Review_Date IS NOT NULL                       and
+					CARM_Next_Review_Date  NOT IN ( "1901-01-01")  and
+					CARM_Next_Review_Date >= Reporting_Date
+					then   "Y"
+					else "N"
+				END AS CARM_Next_Review_Date_Valid_Flag,
+
+
+
+			CASE
+				WHEN Batch_Run_Type  NOT IN ("FOTC")
+				then  Null
+				Else CDM_REPAIR.credit_officer_identifier_Interim
+			END AS credit_officer_identifier,
+
+		FROM CDM_CREDIT_REPAIR_00120 CDM_REPAIR
+	),
+
+  CDM_CREDIT_REPAIR_00200 AS (
+  SELECT
+    CDM_REPAIR.* EXCEPT(booking_entity_identifier_1),
+   CASE
+		WHEN credit_facility_limit_next_review_date_valid_Flag = "Y"
+		then  credit_facility_limit_next_review_date
+		WHEN   CARM_Next_Review_Date_Valid_Flag  = "Y"
+        then  CARM_Next_Review_Date
+		END AS Next_Review_Date,
+
+		CASE
+			WHEN credit_facility_limit_next_review_date_valid_Flag = "Y"
+			then  "SDI_Based_credit_facility_limit_next_review_date"
+			WHEN  CARM_Next_Review_Date_Valid_Flag  = "Y"
+			then  "CARM_Based_Next_Review_Date"
+		END AS Next_Review_Date_Source,
+
+	CASE WHEN Batch_Run_Type = "B2RWA" THEN LOCAL_TO_GROUP_FACILITY_MAP_ESR.Group_Code
+			WHEN Batch_Run_Type = "FOTC" THEN LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Group_Code
+	END AS Facility_Type_Code,
+
+			CASE
+				WHEN Batch_Run_Type NOT IN ( "FOTC")
+				then
+					CASE
+						WHEN  CDM_REPAIR.credit_officer_identifier_Interim IS NOT NULL
+						then CDM_REPAIR.credit_officer_identifier_Interim
+					Else "N"
+					END
+					ELSE "N"
+					END AS Aggregated_MIF_Flag,
+
+    ESR_GLMFACIL.Facility_Class AS Facility_Classification,
+    COALESCE(SAFE_CAST(credit_facility_first_drawdown_date AS DATE),
+      SAFE_CAST(CARM_Application_Approval_Date AS DATE)) AS Facility_Start_Date,
+    COALESCE(SAFE_CAST(committed_indicator AS STRING),
+      SAFE_CAST(CARM_Commited_Indicator AS STRING)) AS Facility_Committed_Indicator,
+    COALESCE(SAFE_CAST(local_credit_facility_type_code AS STRING),
+      SAFE_CAST(CARM_Facility_Type_Code_Local AS STRING)) AS Facility_Type_Code_Local,
+    CASE
+      WHEN SITE_ATTRIBUTES.Parameter IS NOT NULL THEN CASE
+      WHEN SITE_ATTRIBUTES.VALUE IS NOT NULL THEN SITE_ATTRIBUTES.VALUE
+    ELSE
+    "N"
+  END
+    ELSE
+    "NA"
+  END
+    AS Site_Eligible_For_UK_Ret_SME_Reclass_Flag,
+
+	CASE WHEN "[$run_group]" = "HBUK"
+	THEN SITE_ATTRIBUTES_PCIF_HBUK.Value
+	ELSE SITE_ATTRIBUTES_PCIF.Value END AS PCIF_Identifier, --FINOTC-276185
+
+    SAFE_CAST(REGULATOR_SPECIFIC.Parameter_Value AS FLOAT64) AS UK_Ret_SME_Limit_Threshold_GBP,
+
+	 CASE WHEN  advised_indicator IN ("Y", "N", "1", "0")			--FINOTC-61001 --FINOTC-135812
 THEN "Y"
-      ELSE "N"
-  END AS Advised_Indicator_Validation_Flag,
-  SITE_ATTRIBUTES_1.value AS HNAH_Entity_Flag --FINOTC-31583
+ELSE "N" END AS Advised_Indicator_Validation_Flag,
+SITE_ATTRIBUTES_1.value AS HNAH_Entity_Flag                                                 --FINOTC-31583
+  FROM
+    CDM_CREDIT_REPAIR_00150 CDM_REPAIR
+  LEFT OUTER JOIN FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP LOCAL_TO_GROUP_FACILITY_MAP_ESR
+		ON LOCAL_TO_GROUP_FACILITY_MAP_ESR.Category = "ESR"
+		AND LOCAL_TO_GROUP_FACILITY_MAP_ESR.Sub_Category = "ESR"
+		AND CDM_REPAIR.GBCDU_Site_Code_SDI = LOCAL_TO_GROUP_FACILITY_MAP_ESR.System_ID
+		AND CDM_REPAIR.local_credit_facility_type_code = LOCAL_TO_GROUP_FACILITY_MAP_ESR.Local_Code
 
-   FROM CDM_CREDIT_REPAIR_00150 CDM_REPAIR
-   LEFT OUTER JOIN FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP LOCAL_TO_GROUP_FACILITY_MAP_ESR ON LOCAL_TO_GROUP_FACILITY_MAP_ESR.Category = "ESR"
-   AND LOCAL_TO_GROUP_FACILITY_MAP_ESR.Sub_Category = "ESR"
-   AND CDM_REPAIR.GBCDU_Site_Code_SDI = LOCAL_TO_GROUP_FACILITY_MAP_ESR.System_ID
-   AND CDM_REPAIR.local_credit_facility_type_code = LOCAL_TO_GROUP_FACILITY_MAP_ESR.Local_Code
-   LEFT OUTER JOIN FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP LOCAL_TO_GROUP_FACILITY_MAP_NONESR ON LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Category = "NON_ESR"
-   AND LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Sub_Category = "RWA"
-   AND CDM_REPAIR.grca_Entity_Identifier = LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Legal_Entity ----FINOTC-14155
+		LEFT OUTER JOIN FOTC_RD_LOCAL_TO_GROUP_FACILITY_MAP LOCAL_TO_GROUP_FACILITY_MAP_NONESR
+		ON LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Category = "NON_ESR"
+		AND LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Sub_Category = "RWA"
+		AND CDM_REPAIR.grca_Entity_Identifier = LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Legal_Entity			----FINOTC-14155
+		AND LOCAL_TO_GROUP_FACILITY_MAP_NONESR.System_ID = CDM_REPAIR.credit_facility_system_identifier
+		AND CDM_REPAIR.local_credit_facility_type_code = LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Local_Code
 
-   AND LOCAL_TO_GROUP_FACILITY_MAP_NONESR.System_ID = CDM_REPAIR.credit_facility_system_identifier
-   AND CDM_REPAIR.local_credit_facility_type_code = LOCAL_TO_GROUP_FACILITY_MAP_NONESR.Local_Code
-   LEFT OUTER JOIN ESR_GRP_GLMFACIL ESR_GLMFACIL ON ESR_GLMFACIL.Local_Site_Code = CDM_REPAIR.CARM_Facility_Type_Code_Group
-   AND ESR_GLMFACIL.Reporting_Date = CDM_REPAIR.Reporting_Date
-   LEFT OUTER JOIN RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES ON SITE_ATTRIBUTES.Site_Id = CDM_REPAIR.grca_Entity_Identifier ----FINOTC-14155
+  LEFT OUTER JOIN
+    ESR_GRP_GLMFACIL ESR_GLMFACIL
+  ON
+    ESR_GLMFACIL.Local_Site_Code=CDM_REPAIR.CARM_Facility_Type_Code_Group
+    AND ESR_GLMFACIL.Reporting_Date=CDM_REPAIR.Reporting_Date
+  LEFT OUTER JOIN
+    RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES
+  ON
+	SITE_ATTRIBUTES.Site_Id=CDM_REPAIR.grca_Entity_Identifier			----FINOTC-14155
+	AND SITE_ATTRIBUTES.Parameter="Site_Eligible_For_UK_Ret_SME_Reclass_Flag"
+	LEFT OUTER JOIN                                                                              --FINOTC-31583
+    RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES_1
+    ON
+    SITE_ATTRIBUTES_1.Site_Id=CDM_REPAIR.grca_entity_identifier
+    AND SITE_ATTRIBUTES_1.Parameter="HNAH_ENTITY_FLAG"
 
-   AND SITE_ATTRIBUTES.Parameter = "Site_Eligible_For_UK_Ret_SME_Reclass_Flag"
-   LEFT OUTER JOIN --FINOTC-31583
- RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES_1 ON SITE_ATTRIBUTES_1.Site_Id = CDM_REPAIR.grca_entity_identifier
-   AND SITE_ATTRIBUTES_1.Parameter = "HNAH_ENTITY_FLAG"
-   LEFT OUTER JOIN RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES_PCIF_HBUK ON SITE_ATTRIBUTES_PCIF_HBUK.Site_Id = CDM_REPAIR.grca_entity_identifier
-   AND SITE_ATTRIBUTES_PCIF_HBUK.Parameter = "PCIF_IMPORT_SOURCE_HBUK" --FINOTC-276185
+	LEFT OUTER JOIN
+    RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES_PCIF_HBUK
+   ON
+    SITE_ATTRIBUTES_PCIF_HBUK.Site_Id=CDM_REPAIR.grca_entity_identifier
+    AND SITE_ATTRIBUTES_PCIF_HBUK.Parameter="PCIF_IMPORT_SOURCE_HBUK"  --FINOTC-276185
 
-   LEFT OUTER JOIN RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES_PCIF ON SITE_ATTRIBUTES_PCIF.Site_Id = CDM_REPAIR.grca_entity_identifier ----FINOTC-14155
+	LEFT OUTER JOIN
+    RWA_RD_SITE_ATTRIBUTES SITE_ATTRIBUTES_PCIF
+	  ON
+	SITE_ATTRIBUTES_PCIF.Site_Id=CDM_REPAIR.grca_entity_identifier		----FINOTC-14155
+    AND SITE_ATTRIBUTES_PCIF.Parameter="PCIF_IMPORT_SOURCE"
 
-   AND SITE_ATTRIBUTES_PCIF.Parameter = "PCIF_IMPORT_SOURCE"
-   LEFT OUTER JOIN RWA_RD_REGULATOR_SPECIFIC_VALUES REGULATOR_SPECIFIC ON REGULATOR_SPECIFIC.Regulator = "PRA"
-   AND REGULATOR_SPECIFIC.Parameter_Name = "UK_RET_SME_LIMIT_THRESHOLD_GBP"),
-     CDM_CREDIT_REPAIR_00210 AS
-  (SELECT CDM_REPAIR.*,
-          CASE
-              WHEN Advised_Indicator_Validation_Flag <> "Y"
-                   OR Advised_Indicator_Validation_Flag IS NULL THEN "Y"
-              ELSE "N"
-          END AS Advised_Indicator_Fallback,
-          CASE
-              WHEN Committed_Indicator_Override IS NOT NULL THEN "N" --FINOTC-9225
 
-              WHEN Facility_Committed_Indicator IS NULL THEN "Y"
-              ELSE "N"
-          END AS Committed_Indicator_Fallback_Flag,
-          CASE
-              WHEN HNAH_Entity_Flag = "Y"
-                   AND Batch_Run_Type = "B2RWA" THEN --FINOTC-31583
- CASE
-     WHEN COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0) = 0 THEN 0
-     WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64), 0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0)) > 1 THEN 1
-     WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64), 0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0)) < 0 THEN 0
-     ELSE (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64), 0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0))
- END
-              ELSE NULL
-          END AS Utilisation, ----- FINOTC_213409
-  CASE
-      WHEN HNAH_Entity_Flag = "Y"
-           AND Batch_Run_Type = "B2RWA" THEN --FINOTC-31583
- CASE
-     WHEN COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0) = 0 THEN "Limit_For_Utilisation_Not_Available"
-     WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64), 0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0)) > 1 THEN "Utilisation_Greater_Than_One"
-     WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64), 0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64), 0)) < 0 THEN "Utilisation_Less_Than_Zero"
-     ELSE "Utilisation_Within_Valid_Range"
- END
-      ELSE "N/A"
-  END AS Utilisation_Indicator, ---- FINOTC_213409
-  CASE
-      WHEN RWA_Secured_Indicator IN ("1") THEN "Secured" --FINOTC-31583
+  LEFT OUTER JOIN
+    RWA_RD_REGULATOR_SPECIFIC_VALUES REGULATOR_SPECIFIC
+  ON
+    REGULATOR_SPECIFIC.Regulator="PRA"
+    AND REGULATOR_SPECIFIC.Parameter_Name="UK_RET_SME_LIMIT_THRESHOLD_GBP" ),
 
-      WHEN RWA_Secured_Indicator IN ("2") THEN "Unsecured"
-  END AS Secured_Unsecured_Indicator
-   FROM CDM_CREDIT_REPAIR_00200 CDM_REPAIR)
-SELECT *
-FROM CDM_CREDIT_REPAIR_00210
+CDM_CREDIT_REPAIR_00210 AS (
+	SELECT
+    CDM_REPAIR.*,
+	CASE WHEN Advised_Indicator_Validation_Flag <> "Y"
+    OR
+    Advised_Indicator_Validation_Flag IS NULL
+THEN "Y"
+ELSE "N" END AS Advised_Indicator_Fallback,
+
+	CASE
+         	WHEN Committed_Indicator_Override IS NOT NULL THEN "N"	--FINOTC-9225
+      WHEN Facility_Committed_Indicator IS NULL THEN "Y"
+    ELSE
+    "N"
+	END AS Committed_Indicator_Fallback_Flag,
+
+	CASE WHEN HNAH_Entity_Flag = "Y" AND Batch_Run_Type = "B2RWA" THEN                                                                   --FINOTC-31583
+     CASE WHEN COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64),0) = 0 THEN 0
+	    WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64),0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64),0)) > 1 THEN 1
+		WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64),0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64),0)) < 0  THEN 0
+     ELSE (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency AS FLOAT64),0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64),0)) END
+	ELSE NULL
+	END AS Utilisation,     ----- FINOTC_213409
+
+  CASE WHEN HNAH_Entity_Flag = "Y"  AND Batch_Run_Type = "B2RWA"  THEN                                                                         --FINOTC-31583
+    CASE WHEN COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit as FLOAT64),0) =0  THEN "Limit_For_Utilisation_Not_Available"
+	    WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency as FLOAT64),0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64),0)) > 1 		      THEN "Utilisation_Greater_Than_One"
+        WHEN (COALESCE(SAFE_CAST(End_of_period_balance_transaction_currency as FLOAT64),0) / COALESCE(SAFE_CAST(Master_Category_A_Exposure_Limit AS FLOAT64),0)) < 0 		      THEN "Utilisation_Less_Than_Zero"
+    ELSE  "Utilisation_Within_Valid_Range" END
+  ELSE "N/A"
+  END AS Utilisation_Indicator,      ---- FINOTC_213409
+
+   CASE WHEN  RWA_Secured_Indicator in ("1")  THEN "Secured"                                                          --FINOTC-31583
+       WHEN  RWA_Secured_Indicator in ("2")  THEN "Unsecured"
+	    END AS Secured_Unsecured_Indicator
+
+	FROM
+    CDM_CREDIT_REPAIR_00200 CDM_REPAIR )
+
+
+select *
+from CDM_CREDIT_REPAIR_00210
+
