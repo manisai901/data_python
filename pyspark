@@ -1,0 +1,35 @@
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+df = (
+    spark.range(1, 1001)
+    .withColumn("customer_id", col("id"))
+    .withColumn("first_name", concat(lit("FirstName_"), col("id")))
+    .withColumn("last_name", concat(lit("LastName_"), col("id")))
+    .withColumn("email", concat(lit("user"), col("id"), lit("@mail.com")))
+    .withColumn("phone_number", concat(lit("+91-"), lpad((lit(9000000000) + col("id")).cast("string"), 10, "0")))
+    .withColumn("date_of_birth", date_add(lit("1985-01-01"), col("id") % 12000))
+    .withColumn(
+        "gender",
+        when(col("id") % 3 == 0, "Male")
+        .when(col("id") % 3 == 1, "Female")
+        .otherwise("Other")
+    )
+    .withColumn("country", lit("India"))
+    .withColumn(
+        "state",
+        when(col("id") % 4 == 0, "Telangana")
+        .when(col("id") % 4 == 1, "Karnataka")
+        .when(col("id") % 4 == 2, "Tamil Nadu")
+        .otherwise("Maharashtra")
+    )
+    .withColumn("city", concat(lit("City_"), col("id") % 50))
+    .withColumn("address", concat(lit("Street "), col("id"), lit(", Area "), col("id") % 100))
+    .withColumn("zip_code", lpad((lit(500000) + col("id") % 50000).cast("string"), 6, "0"))
+    .withColumn("account_number", concat(lit("ACCT"), lpad(col("id").cast("string"), 10, "0")))
+    .withColumn("created_date", current_date())
+    .withColumn("last_updated_ts", current_timestamp())
+    .drop("id")
+)
+
+df.write.mode("overwrite").saveAsTable("sample_customer_data")
