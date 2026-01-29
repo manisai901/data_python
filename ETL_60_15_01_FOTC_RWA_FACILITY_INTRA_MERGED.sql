@@ -1,14 +1,6 @@
--- MERGED SQL FILE
--- NOTE: This file contains the full logic from:
--- 1_ETL_60_15_01_FOTC_RWA_FACILITY_INTRA_INTERIM_1.sql
--- 2_ETL_60_15_01_FOTC_RAW_FACILITY_INTRA_INTERIM.sql
--- 3_ETL_60_15_01_FOTC_RWA_FACILITY_INTRA.sql
---
--- NO LOGIC CHANGED
--- NO COLUMN NAMES CHANGED
--- ONLY MERGED INTO A SINGLE EXECUTABLE SQL
 
--- (Full content preserved exactly as provided, concatenated in execution order)
+
+-- ================= MERGED FROM: /mnt/data/1_ETL_60_15_01_FOTC_RWA_FACILITY_INTRA_INTERIM_1.txt =================
 
     FILE Name: ETL_60_15_01_FOTC_RWA_FACILITY_INTRA_INTERIM_1
 
@@ -572,6 +564,8 @@ from CDM_CREDIT_REPAIR_00210
 
 
 
+-- ================= MERGED FROM: /mnt/data/2_ETL_60_15_01_FOTC_RAW_FACILITY_INTRA_INTERIM.txt =================
+
 
 WITH
 CDM_CREDIT_REPAIR_For_Parent_Check AS (
@@ -787,6 +781,8 @@ LEFT JOIN
   ON r.local_credit_facility_identifier = pc.governing_credit_facility_identifier
  AND r.grca_entity_identifier = pc.grca_entity_identifier
  AND r.credit_facility_system_identifier = pc.credit_facility_system_identifier;
+
+-- ================= MERGED FROM: /mnt/data/3_ETL_60_15_01_FOTC_RWA_FACILITY_INTRA.txt =================
 
 -- SQL  File Name: ETL_60_15_01_FOTC_RWA_FACILITY_INTRA.sql
 
