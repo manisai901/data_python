@@ -1,0 +1,19 @@
+### Summary
+- Scope included optimisation of 3 SQL files related to FOTC RWA Facility Intra processing
+- Two SQL files were optimised; the third was already optimised
+- All three SQLs have been consolidated into a single merged SQL script
+
+### Key Changes
+- Merged interim and final SQL logic into one SQL file
+- Removed duplicate TEMP FUNCTION definitions
+- Resolved BigQuery column ambiguity issues
+- Ensured single final output with no change to business logic
+
+### Validation
+- Output comparison performed between original SQLs and merged SQL
+- Logic consistency verified
+- Performance metrics (elapsed time, slot usage, bytes processed) reviewed
+
+### Impact
+- No functional or data impact
+- Improves maintainability and reduces operational risk
