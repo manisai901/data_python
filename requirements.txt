@@ -1,0 +1,19 @@
+# --- Core Python data tools ---
+pandas
+numpy
+requests
+
+# --- JSON and API handling ---
+requests==2.32.3
+
+# --- Apache Airflow compatibility ---
+apache-airflow-client==2.10.2
+
+# --- Google Cloud libraries (optional, for mock GCS/BQ workflows) ---
+google-cloud-storage==2.18.2
+google-cloud-bigquery==3.25.0
+
+# --- Utilities for local development ---
+pyarrow==17.0.0
+fastparquet==2024.5.0
+faker==28.4.1

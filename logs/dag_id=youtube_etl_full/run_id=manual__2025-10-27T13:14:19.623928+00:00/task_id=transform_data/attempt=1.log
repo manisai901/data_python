@@ -1,0 +1,12 @@
+{"timestamp":"2025-10-27T13:14:47.183047Z","level":"info","event":"DAG bundles loaded: dags-folder, example_dags","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager","filename":"manager.py","lineno":179}
+{"timestamp":"2025-10-27T13:14:47.184701Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/youtube_ETL.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2025-10-27T13:14:47.242812Z","level":"warning","event":"The `airflow.operators.python.PythonOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.python.PythonOperator'`.","category":"DeprecatedImportWarning","filename":"/opt/airflow/dags/youtube_ETL.py","lineno":2,"logger":"py.warnings"}
+{"timestamp":"2025-10-27T13:14:47.556086Z","level":"info","event":"Task instance is in running state","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.558620Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.QUEUED","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.559305Z","level":"info","event":"Current task name:transform_data","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.560849Z","level":"info","event":"Dag name:youtube_etl_full","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.685768Z","level":"info","event":"✅ Data transformed and saved.","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.686913Z","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator","filename":"python.py","lineno":218}
+{"timestamp":"2025-10-27T13:14:47.759093Z","level":"info","event":"Task instance in success state","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.763596Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.RUNNING","logger":"task.stdout"}
+{"timestamp":"2025-10-27T13:14:47.764187Z","level":"info","event":"Task operator:<Task(PythonOperator): transform_data>","logger":"task.stdout"}

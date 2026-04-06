@@ -1,0 +1,251 @@
+FILE Name: ETL_60_15_01_FOTC_RAW_FACILITY_INTRA_INTERIM
+
+WITH
+   CDM_CREDIT_REPAIR_For_Parent_Check AS   ---- group by is done to Avoid Duplicate Record
+  (
+  SELECT
+    governing_credit_facility_identifier, grca_entity_identifier, credit_facility_system_identifier-- FINOTC-110827
+  FROM
+    [$target_dataset].FOTC_COMMON_FACILITY_INTRA
+  GROUP BY
+    governing_credit_facility_identifier,grca_entity_identifier,credit_facility_system_identifier ),-- FINOTC-110827
+
+ DMDS AS (
+  SELECT
+    CCY_CODE AS source_currency,
+    EXCH_CCY AS target_Currency,
+    EXCH_RATE AS exchange_rate
+  FROM
+    [$target_dataset].DMDS_USD_FX_RATES ),
+
+ RWA_RD_REGULATOR_SPECIFIC_VALUES AS (
+  SELECT
+    Regulator AS Regulator,
+    Parameter_Name AS Parameter_Name,
+    Parameter_Value,
+	Parameter_Value_String
+  FROM
+    [$target_dataset].FOTC_RD_REGULATOR_SPECIFIC_VALUES ),
+
+CDM_CREDIT_REPAIR_00220 AS (
+	SELECT
+    CDM_REPAIR.*,
+
+	CASE
+      WHEN Committed_Indicator_Fallback_Flag="Y" THEN "Y"
+    ELSE "N"
+    END    AS Committed_Indicator_Fallback
+
+	FROM
+    [$target_dataset].FOTC_RWA_FACILITY_INTRA_INTERIM_1 CDM_REPAIR ),
+
+	CDM_CREDIT_REPAIR_00230 AS (
+	SELECT
+    CDM_REPAIR.*,
+
+	CASE WHEN Advised_Indicator_Validation_Flag <> "Y"
+Then Advised_Indicator_Fallback
+Else advised_indicator  END AS Advised_Indicator_SDI,
+
+	CASE WHEN Facility_Committed_Indicator IS NOT NULL
+	THEN CASE
+	  WHEN Facility_Committed_Indicator = "Y" then "Y"
+      WHEN Facility_Committed_Indicator = "N" then "N"
+      WHEN Facility_Committed_Indicator ="1" THEN "Y"
+      WHEN Facility_Committed_Indicator ="0" THEN "N"
+    END
+	ELSE Committed_Indicator_Fallback END
+    AS Facility_Committed_Indicator_RWA,
+
+	CASE
+      WHEN CARM_Commited_Indicator IS NOT NULL THEN CARM_Commited_Indicator
+    ELSE
+    Committed_Indicator_Fallback
+  END
+    AS Commited_Indicator_Final
+
+	FROM
+    CDM_CREDIT_REPAIR_00220 CDM_REPAIR ),
+
+  MIF_L_GOV AS (
+  SELECT
+    CDM_REPAIR.*,
+
+
+    local_credit_facility_identifier AS Child_Facility_ID,
+    governing_credit_facility_identifier AS Parent_Facility_ID,
+    committed_indicator AS committed_indicator,
+    grca_entity_identifier	 AS Parent_Site_ID,
+    CARM_Site_Saracen_ID AS Site_Saracen_ID
+  FROM
+    CDM_CREDIT_REPAIR_00230 CDM_REPAIR ),
+
+  CHECK_ALL_CHILD_ARE_UNCOMMITED AS (
+  SELECT
+    local_credit_facility_identifier AS Facility_ID,
+    Site_Saracen_ID,
+    Commited_Indicator AS Child_Committed_Indicator
+  FROM (
+    SELECT
+      MIF_E.local_credit_facility_identifier,
+      MIF_E.grca_entity_identifier AS Site_Saracen_ID,
+      MIF_E_CHILD.Facility_Committed_Indicator_RWA AS Commited_Indicator
+    FROM
+      CDM_CREDIT_REPAIR_00230 MIF_E
+    LEFT OUTER JOIN
+      MIF_L_GOV
+    ON
+      MIF_E.local_credit_facility_identifier = MIF_L_GOV.Parent_Facility_ID
+      AND MIF_E.grca_entity_identifier = MIF_L_GOV.Parent_Site_ID
+    LEFT OUTER JOIN
+      CDM_CREDIT_REPAIR_00230 MIF_E_CHILD
+    ON
+      MIF_L_GOV.Child_Facility_ID = MIF_E_CHILD.local_credit_facility_identifier
+      AND MIF_L_GOV.Parent_Site_ID = MIF_E_CHILD.grca_entity_identifier
+    WHERE
+      MIF_L_GOV.Child_Facility_ID IS NOT NULL )
+  GROUP BY
+    Facility_ID,
+    Site_Saracen_ID,
+    Child_Committed_Indicator ),
+
+  CDM_CREDIT_REPAIR_00300 AS (
+  SELECT
+    CDM_CREDIT_REPAIR.*,
+    CASE
+      WHEN CHILD_COMMITTED.Child_Committed_Indicator = 'Y' THEN 'N'
+      WHEN CHILD_UNCOMMITTED.Child_Committed_Indicator = 'N' THEN 'Y'
+	  ELSE "N"
+  END
+    AS Leaf_facility_Cos_Of_Non_Commited_Child_Facilities_Flag
+  FROM
+    CDM_CREDIT_REPAIR_00230 CDM_CREDIT_REPAIR
+  LEFT OUTER JOIN
+    CHECK_ALL_CHILD_ARE_UNCOMMITED CHILD_COMMITTED
+  ON
+    CDM_CREDIT_REPAIR.local_credit_facility_identifier = CHILD_COMMITTED.Facility_ID
+    AND CDM_CREDIT_REPAIR.grca_entity_identifier = CHILD_COMMITTED.Site_Saracen_ID
+    AND 'Y' = CHILD_COMMITTED.Child_Committed_Indicator
+  LEFT OUTER JOIN
+    CHECK_ALL_CHILD_ARE_UNCOMMITED CHILD_UNCOMMITTED
+  ON
+    CDM_CREDIT_REPAIR.local_credit_facility_identifier = CHILD_UNCOMMITTED.Facility_ID
+    AND CDM_CREDIT_REPAIR.grca_entity_identifier = CHILD_UNCOMMITTED.Site_Saracen_ID
+    AND 'N' = CHILD_UNCOMMITTED.Child_Committed_Indicator ),
+
+  CDM_CREDIT_REPAIR_00400 AS (
+  SELECT
+    CDM_REPAIR.*,
+    COALESCE(SAFE_CAST(Facility_Type_Code AS STRING),SAFE_CAST(CARM_Facility_Type_Code_Group AS STRING)) AS Facility_Type_Code_Group,
+   CASE
+      WHEN COALESCE(SAFE_CAST(Facility_Classification AS STRING), "NA") IN ("B", "S") THEN "Y"
+    ELSE
+    "N"
+  END
+    AS Cat_B_S_Facility_Flag,
+--FINOTC-15994
+	DMDS.exchange_rate AS GBP_TO_USD_EXCH_RATE,
+	advised_credit_limit_amount_transaction_currency_code.exchange_rate AS Advised_Credit_Limit_EXCH_RATE,
+	unweighted_utilisation_amount_transaction_currency_code.exchange_rate AS Unweighted_Utilisation_EXCH_RATE,
+	undrawn_balance_transaction_currency_code.exchange_rate AS Undrawn_Balance_in_Actual_Currency_EXCH_RATE,
+    CARM_Limit_CCY.exchange_rate AS CARM_Unweighted_Approved_Limit_EXCH_RATE,
+--FINOTC-15994
+	CASE WHEN facility_expiry_date NOT IN ("9999-12-31")
+     AND  facility_expiry_date IS NOT NULL AND facility_expiry_date NOT IN ("1901-01-01")   AND facility_expiry_date >= Reporting_Date
+     THEN "Y" ELSE "N" END AS Facility_Expiry_Date_Valid_Flag,
+
+
+   -- ROW_NUMBER()OVER (PARTITION BY Dedup_Key ORDER BY Dedup_Key DESC) AS Record_No
+  FROM  CDM_CREDIT_REPAIR_00300 CDM_REPAIR
+
+--FINOTC-15994
+LEFT JOIN DMDS
+ON DMDS.source_currency = 'GBP'
+
+LEFT JOIN DMDS advised_credit_limit_amount_transaction_currency_code
+ON advised_credit_limit_amount_transaction_currency_code.source_currency = CDM_REPAIR.advised_credit_limit_amount_transaction_currency_code
+
+LEFT JOIN DMDS unweighted_utilisation_amount_transaction_currency_code
+ON unweighted_utilisation_amount_transaction_currency_code.source_currency = CDM_REPAIR.unweighted_utilisation_amount_transaction_currency_code
+
+LEFT JOIN DMDS undrawn_balance_transaction_currency_code
+ON undrawn_balance_transaction_currency_code.source_currency = CDM_REPAIR.undrawn_balance_transaction_currency_code
+
+LEFT JOIN DMDS CARM_Limit_CCY
+ON CARM_Limit_CCY.source_currency = CDM_REPAIR.CARM_Limit_CCY  ),
+  CDM_CREDIT_REPAIR_00500 AS (
+  SELECT
+    CDM_CREDIT_REPAIR.*,
+   CASE WHEN Facility_Type_code_Group IS NULL THEN "Y"
+    ELSE "N"
+     END
+    AS Facility_Type_Code_Fallback_Flag,
+    CASE
+      WHEN CARM_Facility_Expiry_Date NOT IN ("9999-12-31") AND CARM_Facility_Expiry_Date IS NOT NULL AND  CARM_Facility_Expiry_Date >= Reporting_Date
+	  THEN "Y"
+    ELSE
+    "N"
+  END
+    AS CARM_Facility_Expiry_Date_Valid_Flag
+  FROM
+    CDM_CREDIT_REPAIR_00400 CDM_CREDIT_REPAIR )--,
+
+  --CDM_CREDIT_REPAIR_00600 AS (
+  SELECT
+    CDM_CREDIT_REPAIR.*,
+    advised_credit_limit_amount_in_transaction_currency * Advised_Credit_Limit_EXCH_RATE AS Advised_Credit_Limit_USD,
+    CDM_CREDIT_REPAIR.undrawn_balance_in_transaction_currency * Undrawn_Balance_in_Actual_Currency_EXCH_RATE AS Undrawn_Balance_in_Actual_Currency_USD_Interim,
+    CARM_Unweighted_Approved_Limit_Amount * CARM_Unweighted_Approved_Limit_EXCH_RATE AS CARM_Unweighted_Limit_USD,
+	CARM_Unweighted_Approved_Limit_Amount * CARM_Unweighted_Approved_Limit_EXCH_RATE AS CARM_Unweighted_Approved_Limit_Amount_USD,
+	unweighted_utilisation_amount_in_transaction_currency * Unweighted_Utilisation_EXCH_RATE AS unweighted_utilisation_amount_USD,--5946
+
+    /* CASE
+      WHEN Record_No= 1 THEN "Y"
+    ELSE
+    "N"
+  END
+    AS Valid_Flag,
+   CASE
+      WHEN Facility_Type_code_Fallback_Flag = "Y" THEN "FZZZ"
+  END
+    AS Facility_Type_Code_Fallback,*/
+
+	CASE
+      WHEN Facility_Type_code_Fallback_Flag = "Y" THEN SAFE_CAST(RWA_RD_REGULATOR_SPECIFIC_VALUES.Parameter_Value_String AS STRING)
+  END
+    AS Facility_Type_Code_Fallback,
+
+    CASE
+      WHEN CDM_CREDIT_REPAIR_For_Parent_Check.governing_credit_facility_identifier IS NOT NULL THEN "Y"
+    ELSE
+    "N"
+  END
+    AS Parent_Facility_Flag,
+    CASE
+      WHEN SAFE_CAST (Facility_Expiry_Date_Valid_Flag AS STRING) ="Y" THEN SAFE_CAST(facility_expiry_date AS DATE)
+      WHEN SAFE_CAST (CARM_Facility_Expiry_Date_Valid_Flag AS STRING) ="Y" THEN CARM_Facility_Expiry_Date
+  END
+    AS Expiry_Date_Facility,
+
+	CASE
+		WHEN Facility_Expiry_Date_Valid_Flag  = "Y"
+		then "SDI_Based_Facility_Expiry_date"
+		WHEN CARM_Facility_Expiry_Date_Valid_Flag = "Y"
+		then "CARM_based_Facility_Expiry_Date"
+	END AS Expiry_Date_Facility_Source,
+  FROM
+    CDM_CREDIT_REPAIR_00500 CDM_CREDIT_REPAIR
+
+	 LEFT OUTER JOIN RWA_RD_REGULATOR_SPECIFIC_VALUES ON
+   RWA_RD_REGULATOR_SPECIFIC_VALUES.Regulator = "PRA"
+  AND  RWA_RD_REGULATOR_SPECIFIC_VALUES.Parameter_Name = "FACILITY_TYPE_CODE_FALLBACK"
+
+  LEFT OUTER JOIN
+    CDM_CREDIT_REPAIR_For_Parent_Check
+  ON
+    CDM_CREDIT_REPAIR.local_credit_facility_identifier = CDM_CREDIT_REPAIR_For_Parent_Check.governing_credit_facility_identifier
+    AND CDM_CREDIT_REPAIR.grca_entity_identifier = CDM_CREDIT_REPAIR_For_Parent_Check.grca_entity_identifier
+  AND CDM_CREDIT_REPAIR.credit_facility_system_identifier=CDM_CREDIT_REPAIR_For_Parent_Check.credit_facility_system_identifier ---FINOTC-110827
+
+--FROM
+ --- CDM_CREDIT_REPAIR_00700 CDM_CREDIT_REPAIR

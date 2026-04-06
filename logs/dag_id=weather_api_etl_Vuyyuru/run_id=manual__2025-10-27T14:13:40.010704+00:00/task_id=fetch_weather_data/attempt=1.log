@@ -1,0 +1,13 @@
+{"timestamp":"2025-10-27T14:13:51.263619Z","level":"info","event":"DAG bundles loaded: dags-folder, example_dags","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager","filename":"manager.py","lineno":179}
+{"timestamp":"2025-10-27T14:13:51.269259Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/Weather_vuyy.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2025-10-27T14:13:51.310483Z","level":"warning","event":"The `airflow.operators.python.PythonOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.python.PythonOperator'`.","category":"DeprecatedImportWarning","filename":"/opt/airflow/dags/Weather_vuyy.py","lineno":2,"logger":"py.warnings"}
+{"timestamp":"2025-10-27T14:13:51.490238Z","level":"info","event":"Task instance is in running state","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:13:51.508226Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.QUEUED","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:13:51.509139Z","level":"info","event":"Current task name:fetch_weather_data","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:13:51.513223Z","level":"info","event":"Dag name:weather_api_etl_Vuyyuru","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:14:03.466131Z","level":"info","event":"✅ Weather data saved:       city temperature_C humidity   weather_desc                        time","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:14:03.472139Z","level":"info","event":"0  Vuyyuru            26       94  Light drizzle  2025-10-27T14:14:03.156611","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:14:03.517594Z","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator","filename":"python.py","lineno":218}
+{"timestamp":"2025-10-27T14:14:04.773484Z","level":"info","event":"Task instance in success state","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:14:04.907066Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.RUNNING","logger":"task.stdout"}
+{"timestamp":"2025-10-27T14:14:04.926989Z","level":"info","event":"Task operator:<Task(PythonOperator): fetch_weather_data>","logger":"task.stdout"}

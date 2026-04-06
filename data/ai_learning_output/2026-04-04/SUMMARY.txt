@@ -1,0 +1,4 @@
+
+
+===  select COLUMn_NAME, dAtA_TYPE from INFORMATION_SCHear.COLUMNS WHERE TABLE_NAME = APOLLO as TABLE_SCHEMA = GCS something it is issue in above query, find out and correct it, explain with examples  ===
+The query you've provided is attempting to retrieve column names and data types from the `INFORMATION_SCHEMA.COLUMNS` view in SQL Server, but it has a few issues. Here's a breakdown of the issues and ...

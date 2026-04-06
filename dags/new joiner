@@ -1,0 +1,136 @@
+Hi Venkata, for this exercise, you are joining 2 tables = risk and retail_reg
+
+as per the ETL you prepared
+
+if you see that type of GBQ_RESOLVE error, it means that workflow can't find input tables required for your process
+
+to find out what tables are missing, you can expand the yellow warning log Catalogue Resolution: resolved entities did not match the minimum expected of '1'.
+
+
+
+it can't find retail_reg table for your process
+
+have you ingested this retail_reg csv file?
+
+
+
+Nikita SIMARMATA
+have you ingested this retail_reg csv file?
+Hi Nikita,
+I didnt trigger the retail_reg csv file. you can see the details in the screenshot i shared
+
+Hi Venkata
+
+you need to trigger retail reg csv first, before triggering risk csv
+
+due to retail reg ETL needs risk table as input for join
+
+Hi Nikita,
+sure, ill check and update to you..
+
+Hi Venkata, how is it going with your training?
+just fyi I will be on leave rest of the week but will be back next Monday
+
+Hi Nikita,
+thanks for the update. i wasnt able to focus much on the training yesterday and today as i was working on my SQL ticket..
+
+Nikita SIMARMATA
+you need to trigger retail reg csv first, before triggering risk csv
+got it, i could do now
+
+ ill trigger the retail reg csv first and then proceed with the risk csv file
+
+no worries, just wanted to let you know about my availability
+
+sounds good, hope you have a nice Christmas break
+
+Nikita SIMARMATA
+sounds good, hope you have a nice Christmas break 🙂
+thanks! wishing you a very happy Christmas  as well.
+
+Nikita, just to confirm the correct order: should i first trigger all risk json files and then the retail_reg csv, or should the retail_reg json files and retail_reg csv to trigger?
+Nikita SIMARMATA
+you need to trigger retail reg csv first, before triggering risk csv
+
+
+Hey Venkata, what json files are you triggering?
+
+We only need to trigger the load infos and csv files. And as per msg, need to trigger retail reg csv file then risk csv
+
+~~~~~~~~~~~~~~~~~
+REMINDER: REFRESH LOAD load_info each time you upload a load info
+
+LOCATION: radarconfig-dev-0001/Refresh_load_info.json
+___________________________________________________________
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+EXERCISE 2: RISK
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+____
+RISK: STEP 1: Ingest your ~risk~ load_info
+
+gsutil cp vc_risk_v01_00_LOAD_INFO.json gs://radarconfig-dev-0001/New_Starter/load_info
+gsutil setmeta -h "x-goog-meta-file_type:load_info"  gs://radarconfig-dev-0001/New_Starter/load_info/vc_risk_v01_00_LOAD_INFO.json
+
+____
+RISK: STEP 2: Ingest ~risk~ data file
+not done
+gsutil cp vc_risk_v01_00.csv gs://radarconfig-dev-0001/New_Starter/data
+gsutil setmeta -h "x-goog-meta-file_type:vc_risk_v01_00"  gs://radarconfig-dev-0001/New_Starter/data/vc_risk_v01_00.csv
+
+____
+RISK: STEP 3: Ingest your ~risk~ output load_info
+
+gsutil cp vc_risk_output_v01_00_LOAD_INFO.json gs://radarconfig-dev-0001/New_Starter/load_info
+gsutil setmeta -h "x-goog-meta-file_type:load_info"  gs://radarconfig-dev-0001/New_Starter/load_info/vc_risk_output_v01_00_LOAD_INFO.json
+
+____
+RISK: STEP 4: Ingest ~risk~ input requirement
+
+gsutil cp vc_risk_inp_req_v01_00.json gs://radarconfig-dev-0001/radar_local/data/radar_cnfm_inp_req_v02_00
+
+gsutil cp wx_risk_inp_req_v01_00.json gs://radarconfig-dev-0001/radar_local/data/radar_cnfm_inp_req_v02_00
+
+NO METEDATA NEEDED: gsutil setmeta -h "x-goog-meta-file_type:radar_no_ingest"  gs://radarconfig-dev-0001/New_Starter/input_requirements/vc_risk_inp_req_v01_00.json
+
+
+___________________________________________________________
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+EXERCISE 3: RETAIL REG
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+____
+STEP 1: Ingest your load_info
+do
+gsutil cp vc_retail_reg_v01_00_LOAD_INFO.json gs://radarconfig-dev-0001/New_Starter/load_info
+gsutil setmeta -h "x-goog-meta-file_type:load_info"  gs://radarconfig-dev-0001/New_Starter/load_info/vc_retail_reg_v01_00_LOAD_INFO.json
+
+____
+STEP 2: Ingest your output load_info
+done --
+gsutil cp vc_retail_reg_output_v01_00_LOAD_INFO.json gs://radarconfig-dev-0001/New_Starter/load_info
+gsutil setmeta -h "x-goog-meta-file_type:load_info"  gs://radarconfig-dev-0001/New_Starter/load_info/vc_retail_reg_output_v01_00_LOAD_INFO.json
+
+____
+STEP 3: Ingest your SQL
+gsutil cp vc_risk_sql_cnfm_v01_00.sql gs://radarcode-dev-0001/SQL/V01_00
+
+____
+STEP 4: Ingest your EXEC CONFORM
+gsutil cp vc_retail_reg_exec_cnfm_v01_00.json gs://radarconfig-dev-0001/radar_local/data/radar_exec_cnfm_v02_00
+
+NO METEDATA NEEDED: gsutil setmeta -h "x-goog-meta-file_type:radar_no_ingest"  gs://radarconfig-dev-0001/New_Starter/exec_conform/vc_retail_reg_exec_cnfm_v01_00.json
+
+
+____
+STEP 5: Ingest data file
+
+gsutil cp vc_retail_reg_v01_00.csv gs://radarconfig-dev-0001/New_Starter/data
+gsutil setmeta -h "x-goog-meta-file_type:vc_retail_reg_v01_00"  gs://radarconfig-dev-0001/New_Starter/data/vc_retail_reg_v01_00.csv
+
+
+this line is process tasks base facility module_[$release_version].json
+
+{"order_id":"ETL_60_15_01_FOTC_RWA_FACILITY_INTRA","command":"GBQ-SQL-FROM-GCS","parents":["ETL_60_15_01_FOTC_RWA_FACILITY_INTRA_INTERIM"], "parameters":"(\"labels\":[\"exec_type\":[\"FOTC_ADJ_FIRST\",\"RWA_ADJ_FIRST\",\"RWA_ADJ\",\"RWA_UNADJ\",\"FOTC_UNADJ\",\"FOTC_ADJ\"]},\"bucket\":"[Slanding_workflow_tasks]\",\"file_name\":\"[$task_file_path]ETL_60_15_01_FOTC_RWA_FACILITY_INTRA.sql\",\"target_table\":\"FOTC_RWA_FACILITY_INTRA\", \"add_postfix\": false,\"retry_count\":3,\"inter_retry_interval\":180)","topic":"worker")
+March

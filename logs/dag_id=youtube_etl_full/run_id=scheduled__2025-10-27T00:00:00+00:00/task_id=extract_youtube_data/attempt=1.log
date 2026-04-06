@@ -1,0 +1,2 @@
+{"timestamp":"2025-10-27T12:32:36.883990Z","level":"error","event":"Server indicated the task shouldn't be running anymore. Terminating process","detail":{"detail":{"reason":"not_running","message":"TI is no longer in the running state and task should terminate","current_state":"failed"}},"logger":"task"}
+{"timestamp":"2025-10-27T12:32:38.782314Z","level":"error","event":"Task killed!","logger":"task"}

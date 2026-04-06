@@ -1,0 +1,16 @@
+{"timestamp":"2025-10-27T12:51:32.678271Z","level":"info","event":"DAG bundles loaded: dags-folder, example_dags","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager","filename":"manager.py","lineno":179}
+{"timestamp":"2025-10-27T12:51:32.679529Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/youtube_ETL.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2025-10-27T12:51:32.698752Z","level":"warning","event":"The `airflow.operators.python.PythonOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.python.PythonOperator'`.","category":"DeprecatedImportWarning","filename":"/opt/airflow/dags/youtube_ETL.py","lineno":2,"logger":"py.warnings"}
+{"timestamp":"2025-10-27T12:51:32.744049Z","level":"info","event":"Task instance is in running state","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.744715Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.QUEUED","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.745500Z","level":"info","event":"Current task name:load_data","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.746024Z","level":"info","event":"Dag name:youtube_etl_full","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.757130Z","level":"info","event":"✅ Final data ready for loading:","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.803156Z","level":"info","event":"  video_id  views  likes  comments  like_rate","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.803663Z","level":"info","event":"0   abc123   1000    200        20  20.000000","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.804161Z","level":"info","event":"1   def456   2500    500        45  20.000000","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.804639Z","level":"info","event":"2   ghi789   4200    800        65  19.047619","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.803141Z","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator","filename":"python.py","lineno":218}
+{"timestamp":"2025-10-27T12:51:32.835179Z","level":"info","event":"Task instance in success state","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.835734Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.RUNNING","logger":"task.stdout"}
+{"timestamp":"2025-10-27T12:51:32.836368Z","level":"info","event":"Task operator:<Task(PythonOperator): load_data>","logger":"task.stdout"}

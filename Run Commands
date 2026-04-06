@@ -12,7 +12,10 @@
  mkdir ./data ./scripts ./logs ./plugins ./dags
 --- to create required sub folders ---
   mkdir -p dags logs plugins data/gcs_mock data/bigquery_mock
-
+[   .env {file name inside to paste the below content}
+AIRFLOW_UID=501
+AIRFLOW_GID=0
+RUN_MODE=LOCAL]
 --- to restart webserver ---
  docker compose restart airflow-webserver
 

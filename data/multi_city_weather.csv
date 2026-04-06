@@ -1,0 +1,7 @@
+city,temperature,humidity,weather,timestamp
+Hyderabad,26.23,78,haze,2025-10-27 16:05:41.357313
+Bangalore,21.58,90,light rain,2025-10-27 16:05:42.039215
+Delhi,23.07,60,haze,2025-10-27 16:05:42.712103
+Mumbai,26.0,89,broken clouds,2025-10-27 16:05:43.097711
+Chennai,24.25,92,heavy intensity rain,2025-10-27 16:05:43.802261
+Kolkata,29.96,70,haze,2025-10-27 16:05:44.285197
