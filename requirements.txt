@@ -17,3 +17,9 @@ google-cloud-bigquery==3.25.0
 pyarrow==17.0.0
 fastparquet==2024.5.0
 faker==28.4.1
+
+streamlit
+requests
+mysql-connector-python
+python-dotenv
+streamlit-authenticator==0.2.2
