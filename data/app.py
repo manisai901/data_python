@@ -13,14 +13,25 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
 
 MODEL = "llama-3.1-8b-instant"
 
+def get_connection():
+    return mysql.connector.connect(
+        host=os.getenv("MYSQLHOST"),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        database=os.getenv("MYSQLDATABASE"),
+        port=int(os.getenv("MYSQLPORT")),
+        ssl_disabled=False,
+        connection_timeout=10
+    )
 
-DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST"),
-    "user": os.getenv("MYSQLUSER"),
-    "password": os.getenv("MYSQLPASSWORD"),
-    "database": os.getenv("MYSQLDATABASE"),
-    "port": int(os.getenv("MYSQLPORT"))
-}
+
+# DB_CONFIG = {
+#     "host": os.getenv("MYSQLHOST"),
+#     "user": os.getenv("MYSQLUSER"),
+#     "password": os.getenv("MYSQLPASSWORD"),
+#     "database": os.getenv("MYSQLDATABASE"),
+#     "port": int(os.getenv("MYSQLPORT"))
+# }
 
 # DB_CONFIG = {
 #     "host": os.getenv,
