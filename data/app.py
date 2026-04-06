@@ -13,12 +13,21 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
 
 MODEL = "llama-3.1-8b-instant"
 
+
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": MYSQL_PASSWORD,
-    "database": "ai_agent"
+    "host": os.getenv("MYSQLHOST"),
+    "user": os.getenv("MYSQLUSER"),
+    "password": os.getenv("MYSQLPASSWORD"),
+    "database": os.getenv("MYSQLDATABASE"),
+    "port": int(os.getenv("MYSQLPORT"))
 }
+
+# DB_CONFIG = {
+#     "host": os.getenv,
+#     "user": "root",
+#     "password": MYSQL_PASSWORD,
+#     "database": "ai_agent"
+# }
 
 # ================= LOGIN =================
 # names = ["Manikanta"]
