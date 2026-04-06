@@ -10,7 +10,7 @@ import time
 
 
 # ================== CONFIG ==================
-GROQ_API_KEY = "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"  # 🔥 CHANGE ONLY THIS
+GROQ_API_KEY = "g"  # 🔥 CHANGE ONLY THIS
 # api_key = os.environ.get("GROQ_API_KEY")
 # API_KEY_ENV_VAR = "GROQ_API_KEY"
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")

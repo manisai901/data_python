@@ -1,7 +1,7 @@
 import requests
 import mysql.connector
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "your_groq_api_key_here"
 MODEL = "llama-3.1-8b-instant"
 
 DB_CONFIG = {

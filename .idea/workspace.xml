@@ -5,35 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f9dae1c4-98f6-4bfd-aba0-4c45113baa6e" name="Changes" comment="Docker files">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/dbnavigator.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/My_SQL__connection.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/ETL_60_15_01_FOTC_RAW_FACILITY_INTRA_INTERIM.SQL" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/HSBC" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/NEW__ETL_60_15_01_FOTC_RWA_FACILITY_INTRA" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/OPTIMISED__ETL_60_15_01_FOTC_RWA_FACILITY_INTRA.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/SQL_3" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/practice.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/spotify_ETL.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/weather_loaction_mult.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dags/you_tube.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/Grock_Agent.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/Grock_file.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/LLM_memory.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/SQLlite.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/agent.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/ai_learning_output/2026-04-04/560_+_5556_how_much_is_it?.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/ai_learning_output/2026-04-04/SUMMARY.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/ai_learning_output/2026-04-04/_select_COLUMn_NAME,_dAtA_TYPE_from_INFORMATION_SCHear.COLUMNS_WHERE_TABLE_NAME_=_APOLLO_as_TABLE_SCHEMA_=_GCS_something_it_is_issue_in_above_query,_find_out_and_correct_it,_explain_with_examples_.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/interview.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data/memory.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Run Commands" beforeDir="false" afterPath="$PROJECT_DIR$/Run Commands" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/logs/dag_processor/latest" beforeDir="false" afterPath="$PROJECT_DIR$/logs/dag_processor/latest" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/logs/scheduler/latest" beforeDir="false" afterPath="$PROJECT_DIR$/logs/scheduler/latest" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/Grock_Agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/Grock_Agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/Grock_file.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/Grock_file.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/agent.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
