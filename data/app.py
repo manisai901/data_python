@@ -1,121 +1,85 @@
 import streamlit as st
 import requests
-import mysql.connector
 import os
 import bcrypt
 from dotenv import load_dotenv
+from supabase import create_client
 
 # ================= LOAD ENV =================
 load_dotenv()
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 MODEL = "llama-3.1-8b-instant"
 
-# ================= DB =================
-def get_connection():
-    return mysql.connector.connect(
-        host=os.getenv("MYSQLHOST"),
-        user=os.getenv("MYSQLUSER"),
-        password=os.getenv("MYSQLPASSWORD"),
-        database=os.getenv("MYSQLDATABASE"),
-        port=int(os.getenv("MYSQLPORT")),
-        ssl_disabled=False
-    )
-
 # ================= AUTH =================
-def hash_password(password: str) -> str:
+def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-
-def verify_password(password: str, hashed: str) -> bool:
+def verify_password(password, hashed):
     try:
         return bcrypt.checkpw(password.encode(), hashed.encode())
-    except Exception as e:
-        print("Password verify error:", e)
+    except:
         return False
 
-
-def signup(username: str, password: str) -> bool:
-    conn = get_connection()
-    cur = conn.cursor()
-
+def signup(username, password):
     try:
         hashed = hash_password(password)
 
-        cur.execute(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (username, hashed)
-        )
-        conn.commit()
-        return True
+        res = supabase.table("users").insert({
+            "username": username,
+            "password": hashed
+        }).execute()
 
-    except mysql.connector.Error as e:
+        return True
+    except Exception as e:
         print("Signup error:", e)
         return False
 
-    finally:
-        cur.close()
-        conn.close()
-
-
-def login(username: str, password: str) -> bool:
-    conn = get_connection()
-    cur = conn.cursor(buffered=True)  # FIXED
-
+def login(username, password):
     try:
-        cur.execute("SELECT password FROM users WHERE username=%s", (username,))
-        result = cur.fetchone()
+        res = supabase.table("users") \
+            .select("password") \
+            .eq("username", username) \
+            .execute()
 
-        if result and verify_password(password, result[0]):
-            return True
+        if res.data:
+            stored = res.data[0]["password"]
+            return verify_password(password, stored)
+
         return False
-
-    except mysql.connector.Error as e:
-        print("Login DB error:", e)
+    except Exception as e:
+        print("Login error:", e)
         return False
-
-    finally:
-        cur.close()
-        conn.close()
 
 # ================= MEMORY =================
-def load_memory(username: str, session_id: str):
-    conn = get_connection()
-    cur = conn.cursor(dictionary=True, buffered=True)
-
+def load_memory(username, session_id):
     try:
-        cur.execute(
-            "SELECT role, content FROM memory WHERE username=%s AND session_id=%s ORDER BY id ASC",
-            (username, session_id)
-        )
-        return cur.fetchall()
+        res = supabase.table("memory") \
+            .select("role, content") \
+            .eq("username", username) \
+            .eq("session_id", session_id) \
+            .order("id") \
+            .execute()
 
-    except mysql.connector.Error as e:
+        return res.data
+    except Exception as e:
         print("Load memory error:", e)
         return []
 
-    finally:
-        cur.close()
-        conn.close()
-
-
-def save_memory(role: str, content: str, username: str, session_id: str):
-    conn = get_connection()
-    cur = conn.cursor()
-
+def save_memory(role, content, username, session_id):
     try:
-        cur.execute(
-            "INSERT INTO memory (role, content, username, session_id) VALUES (%s, %s, %s, %s)",
-            (role, content, username, session_id)
-        )
-        conn.commit()
-
-    except mysql.connector.Error as e:
+        supabase.table("memory").insert({
+            "role": role,
+            "content": content,
+            "username": username,
+            "session_id": session_id
+        }).execute()
+    except Exception as e:
         print("Save memory error:", e)
-
-    finally:
-        cur.close()
-        conn.close()
 
 # ================= GROQ =================
 def call_groq(prompt, memory):
@@ -137,10 +101,9 @@ def call_groq(prompt, memory):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
-
     except Exception as e:
-        print("Groq API error:", e)
-        return "⚠️ Error getting response from AI"
+        print("Groq error:", e)
+        return "⚠️ AI error"
 
 # ================= SESSION =================
 if "user" not in st.session_state:
@@ -175,34 +138,26 @@ if not st.session_state.user:
             if signup(new_u, new_p):
                 st.success("Account created")
             else:
-                st.error("User may already exist")
+                st.error("User already exists")
 
 # ================= MAIN APP =================
 else:
     st.title(f"🤖 Welcome {st.session_state.user}")
 
-    # Sidebar
     with st.sidebar:
-        st.title("💬 Sessions")
-
         if st.button("➕ New Chat"):
             st.session_state.session_id = str(len(st.session_state))
             st.rerun()
-
-        st.write("Current:", st.session_state.session_id)
 
         if st.button("Logout"):
             st.session_state.user = None
             st.rerun()
 
-    # Load memory
     memory = load_memory(st.session_state.user, st.session_state.session_id)
 
-    # Display chat
     for m in memory:
         st.chat_message(m["role"]).write(m["content"])
 
-    # Input
     user_input = st.chat_input("Ask something...")
 
     if user_input:
@@ -213,13 +168,3 @@ else:
 
         st.chat_message("user").write(user_input)
         st.chat_message("assistant").write(response)
-
-    # Download chat
-    if memory:
-        chat_text = "\n".join([f"{m['role']}: {m['content']}" for m in memory])
-
-        st.download_button(
-            "📥 Download Chat",
-            chat_text,
-            file_name="chat.txt"
-        )
