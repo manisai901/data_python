@@ -27,7 +27,10 @@ def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(password, hashed):
-    return bcrypt.checkpw(password.encode(), hashed.encode())
+    try:
+        return bcrypt.checkpw(password.encode(), hashed.encode())
+    except:
+        return False
 
 def signup(username, password):
     conn = get_connection()
