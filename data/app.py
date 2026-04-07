@@ -23,77 +23,99 @@ def get_connection():
     )
 
 # ================= AUTH =================
-def hash_password(password):
+def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-def verify_password(password, hashed):
+
+def verify_password(password: str, hashed: str) -> bool:
     try:
         return bcrypt.checkpw(password.encode(), hashed.encode())
-    except:
+    except Exception as e:
+        print("Password verify error:", e)
         return False
 
-def signup(username, password):
+
+def signup(username: str, password: str) -> bool:
     conn = get_connection()
     cur = conn.cursor()
 
-    hashed = hash_password(password)
-
     try:
+        hashed = hash_password(password)
+
         cur.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
             (username, hashed)
         )
         conn.commit()
         return True
-    except:
+
+    except mysql.connector.Error as e:
+        print("Signup error:", e)
         return False
+
     finally:
         cur.close()
         conn.close()
 
-def login(username, password):
+
+def login(username: str, password: str) -> bool:
     conn = get_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(buffered=True)  # FIXED
 
-    cur.execute("SELECT password FROM users WHERE username=%s", (username,))
-    result = cur.fetchone()
+    try:
+        cur.execute("SELECT password FROM users WHERE username=%s", (username,))
+        result = cur.fetchone()
 
-    cur.close()
-    conn.close()
+        if result and verify_password(password, result[0]):
+            return True
+        return False
 
-    if result and verify_password(password, result[0]):
-        return True
-    return False
+    except mysql.connector.Error as e:
+        print("Login DB error:", e)
+        return False
+
+    finally:
+        cur.close()
+        conn.close()
 
 # ================= MEMORY =================
-def load_memory(username, session_id):
+def load_memory(username: str, session_id: str):
     conn = get_connection()
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(dictionary=True, buffered=True)
 
-    cur.execute(
-        "SELECT role, content FROM memory WHERE username=%s AND session_id=%s ORDER BY id ASC",
-        (username, session_id)
-    )
+    try:
+        cur.execute(
+            "SELECT role, content FROM memory WHERE username=%s AND session_id=%s ORDER BY id ASC",
+            (username, session_id)
+        )
+        return cur.fetchall()
 
-    data = cur.fetchall()
+    except mysql.connector.Error as e:
+        print("Load memory error:", e)
+        return []
 
-    cur.close()
-    conn.close()
+    finally:
+        cur.close()
+        conn.close()
 
-    return data
 
-def save_memory(role, content, username, session_id):
+def save_memory(role: str, content: str, username: str, session_id: str):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute(
-        "INSERT INTO memory (role, content, username, session_id) VALUES (%s, %s, %s, %s)",
-        (role, content, username, session_id)
-    )
+    try:
+        cur.execute(
+            "INSERT INTO memory (role, content, username, session_id) VALUES (%s, %s, %s, %s)",
+            (role, content, username, session_id)
+        )
+        conn.commit()
 
-    conn.commit()
-    cur.close()
-    conn.close()
+    except mysql.connector.Error as e:
+        print("Save memory error:", e)
+
+    finally:
+        cur.close()
+        conn.close()
 
 # ================= GROQ =================
 def call_groq(prompt, memory):
@@ -111,9 +133,14 @@ def call_groq(prompt, memory):
         "messages": messages[-10:]
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
 
-    return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("Groq API error:", e)
+        return "⚠️ Error getting response from AI"
 
 # ================= SESSION =================
 if "user" not in st.session_state:
@@ -124,7 +151,6 @@ if "session_id" not in st.session_state:
 
 # ================= AUTH UI =================
 if not st.session_state.user:
-
     st.title("🔐 Login / Signup")
 
     tab1, tab2 = st.tabs(["Login", "Signup"])
@@ -149,7 +175,7 @@ if not st.session_state.user:
             if signup(new_u, new_p):
                 st.success("Account created")
             else:
-                st.error("User already exists")
+                st.error("User may already exist")
 
 # ================= MAIN APP =================
 else:
@@ -160,7 +186,7 @@ else:
         st.title("💬 Sessions")
 
         if st.button("➕ New Chat"):
-            st.session_state.session_id = str(len(st.session_state) + 1)
+            st.session_state.session_id = str(len(st.session_state))
             st.rerun()
 
         st.write("Current:", st.session_state.session_id)
