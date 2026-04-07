@@ -1,5 +1,5 @@
 streamlit
-requests
-mysql-connector-python
+supabase
+bcrypt
 python-dotenv
-streamlit-authenticator==0.2.2
+requests
