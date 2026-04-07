@@ -1,5 +1,7 @@
 streamlit
-supabase
+requests
 bcrypt
 python-dotenv
-requests
+supabase
+PyPDF2
+duckduckgo-search
