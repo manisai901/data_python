@@ -1,4 +1,3 @@
-pip install --upgrade pip
 streamlit
 requests
 mysql-connector-python
