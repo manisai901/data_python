@@ -40,7 +40,8 @@ st.markdown(
     <div class="footer">
         Built with ❤️ by <b>Manikanta Sai</b><br><br>
 
-        📧 <a href="mailto:yourmail@gmail.com">yourmail@gmail.com</a>
+        📧 <a href="mailto:yourmail@gmail.com">manikantasaivootla@gmail.com
+</a>
         &nbsp;&nbsp;|&nbsp;&nbsp;
         🌐 <a href="https://github.com/manisai901" target="_blank">
         GitHub Repository
