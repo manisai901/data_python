@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 
 # ================= LOAD ENV =================
@@ -22,7 +21,6 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    
     /* Root Colors */
     :root {
         --primary: #667eea;
@@ -36,13 +34,11 @@ st.markdown(
         --accent: #60a5fa;
     }
     
-    /* Main App Styling */
     .stApp {
         background: linear-gradient(135deg, #020617, #0f172a, #111827);
         color: #f1f5f9;
     }
 
-    /* Block Container */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
@@ -58,18 +54,6 @@ st.markdown(
         border: 1px solid rgba(148, 163, 184, 0.1);
         margin-bottom: 3rem;
         backdrop-filter: blur(10px);
-        animation: slideDown 0.6s ease-out;
-    }
-
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
 
     .main-title {
@@ -151,12 +135,6 @@ st.markdown(
         font-size: 3rem;
         margin-bottom: 1.5rem;
         display: inline-block;
-        animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
     }
 
     .feature-card h3 {
@@ -174,16 +152,6 @@ st.markdown(
     }
 
     /* ========== CHAT INTERFACE ========== */
-    .chat-container {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.7));
-        border: 1px solid rgba(148, 163, 184, 0.1);
-        border-radius: 20px;
-        padding: 2rem;
-        margin: 2rem 0;
-        backdrop-filter: blur(10px);
-        min-height: 500px;
-    }
-
     .stChatMessage {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
         border: 1px solid rgba(148, 163, 184, 0.1);
@@ -193,19 +161,14 @@ st.markdown(
         backdrop-filter: blur(8px);
     }
 
-    .stChatMessage [data-testid="chatAvatarIcon-user"] {
-        background: linear-gradient(135deg, #667eea, #764ba2) !important;
-    }
-
     /* ========== INPUT STYLING ========== */
     .stChatInputContainer input {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9)) !important;
         border: 1px solid rgba(96, 165, 250, 0.3) !important;
-        border-radius: 15px;
+        border-radius: 15px !important;
         color: #f1f5f9 !important;
-        font-size: 1.05rem;
+        font-size: 1.05rem !important;
         padding: 1.2rem !important;
-        transition: all 0.3s ease;
     }
 
     .stChatInputContainer input:focus {
@@ -215,25 +178,21 @@ st.markdown(
 
     /* ========== BUTTON STYLING ========== */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        width: 100%;
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+        width: 100% !important;
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
-    }
-
-    .stButton > button:active {
-        transform: translateY(0);
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6) !important;
     }
 
     /* ========== DIVIDER ========== */
@@ -298,53 +257,21 @@ st.markdown(
         background: rgba(96, 165, 250, 0.1);
     }
 
-    /* ========== ANIMATIONS ========== */
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .feature-card {
-        animation: fadeIn 0.6s ease-out;
-    }
-
-    .feature-card:nth-child(1) {
-        animation-delay: 0.1s;
-    }
-
-    .feature-card:nth-child(2) {
-        animation-delay: 0.2s;
-    }
-
-    .feature-card:nth-child(3) {
-        animation-delay: 0.3s;
-    }
-
     /* ========== RESPONSIVE ========== */
     @media (max-width: 768px) {
         .main-title {
             font-size: 2.5rem;
         }
-
         .sub-text {
             font-size: 1.1rem;
         }
-
         .feature-card {
             padding: 1.8rem;
         }
-
         .contact-links {
             gap: 1rem;
         }
     }
-
     </style>
     """,
     unsafe_allow_html=True
@@ -367,14 +294,6 @@ st.markdown(
 )
 
 # ================= FEATURE CARDS =================
-st.markdown(
-    """
-    <div class="feature-cards-container">
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -383,10 +302,7 @@ with col1:
         <div class="feature-card">
             <div class="feature-icon">⚡</div>
             <h3>Lightning Fast</h3>
-            <p>
-                Responses in milliseconds using Groq's 
-                ultra-fast inference engine technology.
-            </p>
+            <p>Responses in milliseconds using Groq's ultra-fast inference engine technology.</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -398,10 +314,7 @@ with col2:
         <div class="feature-card">
             <div class="feature-icon">🧠</div>
             <h3>Highly Intelligent</h3>
-            <p>
-                Ask anything: coding, Python, SQL, 
-                data engineering, AI, and more.
-            </p>
+            <p>Ask anything: coding, Python, SQL, data engineering, AI, and more.</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -413,10 +326,7 @@ with col3:
         <div class="feature-card">
             <div class="feature-icon">🌐</div>
             <h3>Completely Free</h3>
-            <p>
-                No login required. No hidden fees. 
-                Anyone can use it freely 24/7.
-            </p>
+            <p>No login required. No hidden fees. Anyone can use it freely 24/7.</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -425,23 +335,11 @@ with col3:
 st.markdown("<hr class='divider'>", unsafe_allow_html=True)
 
 # ================= CHAT INTERFACE =================
-st.markdown(
-    """
-    <div>
-        <h2 style='color: white; font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700;'>
-            💬 Start a Conversation
-        </h2>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("<h2 style='color: white; text-align: center; font-size: 2rem; margin: 2rem 0;'>💬 Start a Conversation</h2>", unsafe_allow_html=True)
 
 # Initialize chat memory
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
-if "message_count" not in st.session_state:
-    st.session_state.message_count = 0
 
 # Display chat messages
 for msg in st.session_state.messages:
@@ -463,8 +361,8 @@ if prompt:
         st.write(prompt)
 
     # Call Groq API
-    with st.spinner("🤔 Thinking..."):
-        try:
+    try:
+        with st.spinner("🤔 Thinking... This may take a few seconds"):
             url = "https://api.groq.com/openai/v1/chat/completions"
 
             headers = {
@@ -490,10 +388,10 @@ if prompt:
             if response.status_code == 200:
                 result = response.json()["choices"][0]["message"]["content"]
             else:
-                result = f"❌ Error: {response.status_code} - {response.text}"
+                result = f"❌ API Error: {response.status_code}"
 
-        except Exception as e:
-            result = f"❌ Error: {str(e)}"
+    except Exception as e:
+        result = f"❌ Error: {str(e)}"
 
     # Add assistant message to history
     st.session_state.messages.append({
@@ -501,14 +399,9 @@ if prompt:
         "content": result
     })
 
-    st.session_state.message_count += 1
-
     # Display assistant message
     with st.chat_message("assistant"):
         st.write(result)
-
-    # Rerun to show the new message
-    st.rerun()
 
 st.markdown("<hr class='divider'>", unsafe_allow_html=True)
 
@@ -516,25 +409,13 @@ st.markdown("<hr class='divider'>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric(
-        label="💬 Messages",
-        value=len(st.session_state.messages),
-        delta="in this session"
-    )
+    st.metric("💬 Messages", len(st.session_state.messages), "in this session")
 
 with col2:
-    st.metric(
-        label="⚡ Model",
-        value="Llama 3.1",
-        delta="8B Parameters"
-    )
+    st.metric("⚡ Model", "Llama 3.1", "8B Parameters")
 
 with col3:
-    st.metric(
-        label="🚀 Speed",
-        value="<100ms",
-        delta="Avg Response Time"
-    )
+    st.metric("🚀 Speed", "<100ms", "Avg Response Time")
 
 st.markdown("<hr class='divider'>", unsafe_allow_html=True)
 
