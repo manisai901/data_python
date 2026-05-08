@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 # ================= LOAD ENV =================
@@ -13,97 +14,335 @@ MODEL = "llama-3.1-8b-instant"
 st.set_page_config(
     page_title="Personal AI Assistant",
     page_icon="🤖",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# ================= PREMIUM CSS =================
+# ================= PREMIUM CSS & ANIMATIONS =================
 st.markdown(
     """
     <style>
-
+    
+    /* Root Colors */
+    :root {
+        --primary: #667eea;
+        --secondary: #764ba2;
+        --dark-bg: #020617;
+        --darker-bg: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.8);
+        --border-color: rgba(148, 163, 184, 0.1);
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --accent: #60a5fa;
+    }
+    
+    /* Main App Styling */
     .stApp {
-        background: linear-gradient(
-            135deg,
-            #020617,
-            #0f172a,
-            #111827
-        );
-        color: white;
+        background: linear-gradient(135deg, #020617, #0f172a, #111827);
+        color: #f1f5f9;
     }
 
+    /* Block Container */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
+        max-width: 1100px;
+    }
+
+    /* ========== HEADER SECTION ========== */
+    .header-container {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        border-radius: 25px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        margin-bottom: 3rem;
+        backdrop-filter: blur(10px);
+        animation: slideDown 0.6s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .main-title {
-        text-align: center;
-        font-size: 3rem;
-        font-weight: 800;
-        color: white;
-        margin-top: 10px;
+        font-size: 3.5rem;
+        font-weight: 900;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 50%, #60a5fa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -1px;
     }
 
     .sub-text {
-        text-align: center;
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         color: #cbd5e1;
-        margin-bottom: 40px;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+    }
+
+    .badge-container {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+    }
+
+    .badge {
+        background: rgba(96, 165, 250, 0.15);
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        padding: 0.5rem 1.2rem;
+        border-radius: 50px;
+        font-size: 0.95rem;
+        color: #60a5fa;
+        font-weight: 600;
+    }
+
+    /* ========== FEATURE CARDS ========== */
+    .feature-cards-container {
+        margin: 3rem 0;
     }
 
     .feature-card {
-        background: rgba(255,255,255,0.05);
-        padding: 25px;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+        padding: 2.5rem;
         border-radius: 20px;
-        border: 1px solid rgba(255,255,255,0.08);
-        backdrop-filter: blur(12px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        height: 220px;
-        margin-bottom: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        backdrop-filter: blur(10px);
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transform: translateX(-100%);
+        transition: transform 0.4s ease;
+    }
+
+    .feature-card:hover::before {
+        transform: translateX(0);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+        border-color: #60a5fa;
+        box-shadow: 0 20px 50px rgba(102, 126, 234, 0.2);
+    }
+
+    .feature-icon {
+        font-size: 3rem;
+        margin-bottom: 1.5rem;
+        display: inline-block;
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
     }
 
     .feature-card h3 {
         color: white;
-        font-size: 30px;
-        margin-bottom: 15px;
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
     }
 
     .feature-card p {
-        color: #d1d5db;
-        font-size: 18px;
-        line-height: 1.7;
+        color: #cbd5e1;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        margin: 0;
     }
 
-    .footer {
-        text-align: center;
-        padding: 40px 20px;
-        margin-top: 60px;
-        border-top: 1px solid rgba(255,255,255,0.1);
+    /* ========== CHAT INTERFACE ========== */
+    .chat-container {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.7));
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 2rem 0;
+        backdrop-filter: blur(10px);
+        min-height: 500px;
     }
 
-    .footer h3 {
+    .stChatMessage {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        backdrop-filter: blur(8px);
+    }
+
+    .stChatMessage [data-testid="chatAvatarIcon-user"] {
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    }
+
+    /* ========== INPUT STYLING ========== */
+    .stChatInputContainer input {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+        border: 1px solid rgba(96, 165, 250, 0.3) !important;
+        border-radius: 15px;
+        color: #f1f5f9 !important;
+        font-size: 1.05rem;
+        padding: 1.2rem !important;
+        transition: all 0.3s ease;
+    }
+
+    .stChatInputContainer input:focus {
+        border: 1px solid rgba(102, 126, 234, 0.6) !important;
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.3) !important;
+    }
+
+    /* ========== BUTTON STYLING ========== */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
-        margin-bottom: 15px;
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        width: 100%;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+    }
+
+    .stButton > button:active {
+        transform: translateY(0);
+    }
+
+    /* ========== DIVIDER ========== */
+    .divider {
+        border: none;
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+        margin: 2rem 0;
+    }
+
+    /* ========== METRICS ========== */
+    .stMetric {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 15px;
+        padding: 1.5rem;
+        backdrop-filter: blur(8px);
+    }
+
+    /* ========== FOOTER SECTION ========== */
+    .footer-section {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+        padding: 3rem 2rem;
+        margin-top: 3rem;
+        border-radius: 20px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+
+    .footer-section h3 {
+        color: white;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
     }
 
     .footer-text {
         color: #cbd5e1;
-        font-size: 17px;
+        font-size: 1.1rem;
+        line-height: 1.8;
+        margin-bottom: 1.5rem;
     }
 
-    .footer a {
+    .contact-links {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .contact-links a {
         color: #60a5fa;
         text-decoration: none;
         font-weight: 600;
+        transition: all 0.3s ease;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
     }
 
-    .footer a:hover {
+    .contact-links a:hover {
         color: #93c5fd;
+        background: rgba(96, 165, 250, 0.1);
     }
 
-    .stChatMessage {
-        border-radius: 18px;
-        padding: 12px;
+    /* ========== ANIMATIONS ========== */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .feature-card {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    .feature-card:nth-child(1) {
+        animation-delay: 0.1s;
+    }
+
+    .feature-card:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .feature-card:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+        .main-title {
+            font-size: 2.5rem;
+        }
+
+        .sub-text {
+            font-size: 1.1rem;
+        }
+
+        .feature-card {
+            padding: 1.8rem;
+        }
+
+        .contact-links {
+            gap: 1rem;
+        }
     }
 
     </style>
@@ -111,36 +350,42 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ================= HEADER =================
+# ================= HEADER SECTION =================
 st.markdown(
     """
-    <div class="main-title">
-        🤖 Personal AI Assistant
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <div class="sub-text">
-        Fast AI Assistant powered by Groq + Streamlit
+    <div class="header-container">
+        <h1 class="main-title">🤖 Personal AI Assistant</h1>
+        <p class="sub-text">Lightning-Fast AI Powered by Groq</p>
+        <div class="badge-container">
+            <div class="badge">⚡ Ultra-Fast Inference</div>
+            <div class="badge">🧠 Advanced AI Models</div>
+            <div class="badge">🔐 Secure & Private</div>
+        </div>
     </div>
     """,
     unsafe_allow_html=True
 )
 
 # ================= FEATURE CARDS =================
+st.markdown(
+    """
+    <div class="feature-cards-container">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown(
         """
         <div class="feature-card">
-            <h3>⚡ Fast</h3>
+            <div class="feature-icon">⚡</div>
+            <h3>Lightning Fast</h3>
             <p>
-                Powered by Groq ultra-fast inference engine
-                for lightning-fast AI responses.
+                Responses in milliseconds using Groq's 
+                ultra-fast inference engine technology.
             </p>
         </div>
         """,
@@ -151,10 +396,11 @@ with col2:
     st.markdown(
         """
         <div class="feature-card">
-            <h3>🧠 Smart</h3>
+            <div class="feature-icon">🧠</div>
+            <h3>Highly Intelligent</h3>
             <p>
-                Ask coding, AI, SQL, Python,
-                Data Engineering, and general questions.
+                Ask anything: coding, Python, SQL, 
+                data engineering, AI, and more.
             </p>
         </div>
         """,
@@ -165,99 +411,150 @@ with col3:
     st.markdown(
         """
         <div class="feature-card">
-            <h3>🌐 Public</h3>
+            <div class="feature-icon">🌐</div>
+            <h3>Completely Free</h3>
             <p>
-                No login required.
-                Anyone can use this AI assistant freely.
+                No login required. No hidden fees. 
+                Anyone can use it freely 24/7.
             </p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-# ================= CHAT MEMORY =================
+st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+
+# ================= CHAT INTERFACE =================
+st.markdown(
+    """
+    <div>
+        <h2 style='color: white; font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700;'>
+            💬 Start a Conversation
+        </h2>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Initialize chat memory
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ================= DISPLAY CHAT =================
-for msg in st.session_state.messages:
+if "message_count" not in st.session_state:
+    st.session_state.message_count = 0
 
+# Display chat messages
+for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# ================= USER INPUT =================
-prompt = st.chat_input("Ask anything...")
+# User input
+prompt = st.chat_input("Ask anything... (coding, data engineering, AI, general questions)")
 
 if prompt:
-
-    # Show user message
+    # Add user message to history
     st.session_state.messages.append({
         "role": "user",
         "content": prompt
     })
 
+    # Display user message
     with st.chat_message("user"):
         st.write(prompt)
 
-    # ================= API CALL =================
-    url = "https://api.groq.com/openai/v1/chat/completions"
+    # Call Groq API
+    with st.spinner("🤔 Thinking..."):
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            }
 
-    payload = {
-        "model": MODEL,
-        "messages": st.session_state.messages[-10:]
-    }
+            # Use last 10 messages for context
+            payload = {
+                "model": MODEL,
+                "messages": st.session_state.messages[-10:],
+                "temperature": 0.7,
+                "max_tokens": 1024
+            }
 
-    try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
 
-        response = requests.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
+            if response.status_code == 200:
+                result = response.json()["choices"][0]["message"]["content"]
+            else:
+                result = f"❌ Error: {response.status_code} - {response.text}"
 
-        result = response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            result = f"❌ Error: {str(e)}"
 
-    except Exception as e:
-        result = f"❌ Error: {e}"
-
-    # Save assistant response
+    # Add assistant message to history
     st.session_state.messages.append({
         "role": "assistant",
         "content": result
     })
 
+    st.session_state.message_count += 1
+
+    # Display assistant message
     with st.chat_message("assistant"):
         st.write(result)
+
+    # Rerun to show the new message
+    st.rerun()
+
+st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+
+# ================= CHAT STATS =================
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(
+        label="💬 Messages",
+        value=len(st.session_state.messages),
+        delta="in this session"
+    )
+
+with col2:
+    st.metric(
+        label="⚡ Model",
+        value="Llama 3.1",
+        delta="8B Parameters"
+    )
+
+with col3:
+    st.metric(
+        label="🚀 Speed",
+        value="<100ms",
+        delta="Avg Response Time"
+    )
+
+st.markdown("<hr class='divider'>", unsafe_allow_html=True)
 
 # ================= FOOTER =================
 st.markdown(
     """
-    <div class="footer">
-
+    <div class="footer-section">
         <h3>Built with ❤️ by Manikanta Sai</h3>
-
         <div class="footer-text">
-
-            📧
-            <a href="mailto:manikantasaivootla@gmail.com">
-                manikantasaivootla@gmail.com
-            </a>
-
-            <br><br>
-
-            🌐
-            <a href="https://github.com/manisai901" target="_blank">
-                github.com/manisai901
-            </a>
-
+            <p>A high-performance AI assistant powered by Groq's ultra-fast inference engine.</p>
+            <p>Perfect for developers, data engineers, and anyone who needs quick, intelligent answers.</p>
         </div>
-
+        <div class="contact-links">
+            <a href="mailto:manikantasaivootla@gmail.com">📧 Email</a>
+            <a href="https://github.com/manisai901" target="_blank">🐙 GitHub</a>
+            <a href="#" target="_blank">💼 LinkedIn</a>
+        </div>
+        <p style='color: #94a3b8; margin-top: 2rem; font-size: 0.95rem;'>
+            © 2026 Personal AI Assistant. Built with Streamlit + Groq API.
+        </p>
     </div>
     """,
     unsafe_allow_html=True
